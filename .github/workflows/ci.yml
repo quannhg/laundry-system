@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ["master"]
+    # See docs at https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-excluding-paths
+    paths-ignore:
+      - '.husky/**'
+      - '**.md'
+      - 'docs/**'
+      - 'package.json'
+  
+jobs:
+  test:
+    name: Unit test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - uses: actions/checkout@v3
+        name: Checkout repository
+         
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn && yarn db:generate
+
+      - name: Run unit tests
+        run: yarn test unit
+
+      - name: Build
+        run: yarn build
