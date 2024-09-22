@@ -1,29 +1,28 @@
-import { AuthInputDto } from '@dtos/in';
 import { AuthResultDto } from '@dtos/out';
 import { authHandler } from '@handlers';
+import { Type } from '@sinclair/typebox';
 import { createRoutes } from '@utils';
 
 export const authPlugin = createRoutes('Auth', [
     {
         method: 'POST',
-        url: '/login',
+        url: '/google/auth',
         schema: {
-            body: AuthInputDto,
+            summary: 'Redirect URL of google auth',
             response: {
                 200: AuthResultDto
             }
         },
-        handler: authHandler.login
+        handler: authHandler.googleOAuth
     },
     {
-        method: 'POST',
-        url: '/signup',
+        method: 'DELETE',
+        url: '/logout',
         schema: {
-            body: AuthInputDto,
             response: {
-                200: AuthResultDto
+                200: Type.Null()
             }
         },
-        handler: authHandler.signup
+        handler: authHandler.logout
     }
 ]);
