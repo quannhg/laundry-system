@@ -45,7 +45,7 @@ export function createServer(config: ServerConfig): FastifyInstance {
             const addr = app.server.address();
             if (!addr) return;
             const swaggerPath = typeof addr === 'string' ? addr : `http://${addr.address}:${addr.port}`;
-            app.log.info(`Swagger documentation is on ${swaggerPath}/docs`);
+            app.log.info(`Swagger documentation is on ${swaggerPath}/api-docs`);
         }
     };
 
