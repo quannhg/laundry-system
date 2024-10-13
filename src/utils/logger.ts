@@ -23,7 +23,7 @@ const fileLogTargets = ['info', 'warn', 'error', 'fatal'].map((logLevel) => ({
 }));
 const pinoLogTarget = {
     target: 'pino-pretty',
-    level: 'info',
+    level: 'debug',
     options: {
         translateTime: 'dd/mm/yy HH:MM:ss',
         ignore: 'pid,hostname'
@@ -53,6 +53,7 @@ if (discordLogTarget) {
 
 const loggerConfig: Record<NodeEnv, PinoLoggerOptions> = {
     development: {
+        level: 'debug',
         transport: { targets: devTransportTargets },
         serializers: { err: errorSerialize }
     },
@@ -63,4 +64,4 @@ const loggerConfig: Record<NodeEnv, PinoLoggerOptions> = {
     test: { serializers: { err: errorSerialize } }
 };
 
-export const logger = pino(loggerConfig[envs.NODE_ENV]);
+export const logger = pino(loggerConfig.development);
