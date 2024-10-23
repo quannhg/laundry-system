@@ -43,6 +43,7 @@
     "googleapis": "^144.0.0",
     "jsonwebtoken": "^9.0.2",
     "moment-timezone": "^0.5.44",
+    "mqtt": "^5.10.1",
     "prisma": "^5.7.1"
   },
   "devDependencies": {

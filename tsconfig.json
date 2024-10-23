@@ -38,7 +38,8 @@
             "@hooks": ["src/hooks"],
             "@routes": ["src/routes"],
             "@interfaces": ["src/interfaces"],
-            "@testUtils": ["src/setupTest"]
+            "@testUtils": ["src/setupTest"],
+            "@mqtt": ["src/mqtt"]
         }
     },
     "include": ["src", "**/*.js", "**/*.ts", ".commitlintrc"],

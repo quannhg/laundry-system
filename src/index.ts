@@ -7,7 +7,7 @@ const PORT = 8080;
 const HOST = envs.NODE_ENV === 'development' ? 'localhost' : '0.0.0.0';
 
 // Setup and start fastify server
-const app = createServer({
+export const app = createServer({
     host: HOST,
     port: PORT
 });

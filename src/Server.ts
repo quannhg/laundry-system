@@ -1,9 +1,11 @@
 import fastify, { FastifyInstance } from 'fastify';
 import type { FastifyCookieOptions } from '@fastify/cookie';
 import { envs, swaggerConfig, swaggerUIConfig } from '@configs';
-import { apiPlugin, authPlugin } from './routes';
+import { apiPlugin, authPlugin } from '@routes';
 import { customErrorHandler } from '@handlers';
 import { logger } from '@utils';
+import { fastifyMQTT } from './mqtt/index';
+import { MQTT_TO_SERVER_TOPIC } from './constants/mqtt';
 
 export function createServer(config: ServerConfig): FastifyInstance {
     const app = fastify({ logger });
@@ -30,7 +32,16 @@ export function createServer(config: ServerConfig): FastifyInstance {
 
     app.setErrorHandler(customErrorHandler);
 
+    // Connect to MQTT broker
+    app.register(fastifyMQTT, {
+        host: 'mqtt://localhost:1883',
+        username: 'python_test',
+        password: 'secretpassword',
+        topics: [MQTT_TO_SERVER_TOPIC]
+    });
+
     const shutdown = async () => {
+        app.mqtt.end();
         await app.close();
     };
 
