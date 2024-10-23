@@ -1,6 +1,6 @@
 import mqtt, { MqttClient } from 'mqtt';
 import { logger } from '@utils';
-import { addMachine, removeMachine } from './washingMachine.mqtt';
+import { addMachine, removeMachine, updateWashingStatus } from './washingMachine.mqtt';
 import { FastifyInstance } from 'fastify';
 import { MESSAGE_TYPE } from '@constants';
 
@@ -21,11 +21,14 @@ function subscribeTopics(client: MqttClient, topics: string[]) {
         const { type, payload } = JSON.parse(message.toString()) as MqttMessage;
 
         switch (type) {
-            case MESSAGE_TYPE.REQ_ADD_MACHINE:
+            case MESSAGE_TYPE.ADD_MACHINE:
                 addMachine(client, payload);
                 break;
-            case MESSAGE_TYPE.REQ_REMOVE_MACHINE:
+            case MESSAGE_TYPE.REMOVE_MACHINE:
                 removeMachine(client, payload);
+                break;
+            case MESSAGE_TYPE.UPDATE_MACHINE_STATUS:
+                updateWashingStatus(client, payload);
                 break;
             default:
                 logger.warn(`Unknown message type: ${type}`);

@@ -1,7 +1,7 @@
 import { MqttClient } from 'mqtt';
 import { addMachine, removeMachine } from './washingMachine.mqtt';
 import { prisma } from '@repositories';
-import { MESSAGE_TYPE, MQTT_TO_HARDWARE_TOPIC } from '../constants/mqtt';
+import { MESSAGE_TYPE, MQTT_TO_HARDWARE_TOPIC } from '@constants';
 import { LaundryStatus } from '@prisma/client';
 
 jest.mock('mqtt');
@@ -35,7 +35,7 @@ describe('Washing Machine MQTT Handlers', () => {
             expect(client.publish).toHaveBeenCalledWith(
                 MQTT_TO_HARDWARE_TOPIC,
                 JSON.stringify({
-                    type: MESSAGE_TYPE.RES_ADD_MACHINE,
+                    type: MESSAGE_TYPE.ADD_MACHINE,
                     payload: { status: 'success', id: 'machine1' }
                 })
             );
@@ -57,7 +57,7 @@ describe('Washing Machine MQTT Handlers', () => {
             expect(client.publish).toHaveBeenCalledWith(
                 MQTT_TO_HARDWARE_TOPIC,
                 JSON.stringify({
-                    type: MESSAGE_TYPE.RES_ADD_MACHINE,
+                    type: MESSAGE_TYPE.ADD_MACHINE,
                     payload: { status: 'error', id: 'machine1', message: error.message }
                 })
             );
@@ -79,7 +79,7 @@ describe('Washing Machine MQTT Handlers', () => {
             expect(client.publish).toHaveBeenCalledWith(
                 MQTT_TO_HARDWARE_TOPIC,
                 JSON.stringify({
-                    type: MESSAGE_TYPE.RES_REMOVE_MACHINE,
+                    type: MESSAGE_TYPE.REMOVE_MACHINE,
                     payload: { status: 'success', id: 'machine1' }
                 })
             );
@@ -100,7 +100,7 @@ describe('Washing Machine MQTT Handlers', () => {
             expect(client.publish).toHaveBeenCalledWith(
                 MQTT_TO_HARDWARE_TOPIC,
                 JSON.stringify({
-                    type: MESSAGE_TYPE.RES_REMOVE_MACHINE,
+                    type: MESSAGE_TYPE.REMOVE_MACHINE,
                     payload: { status: 'error', id: 'machine1', message: error.message }
                 })
             );

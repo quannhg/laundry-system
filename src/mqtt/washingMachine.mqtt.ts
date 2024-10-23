@@ -17,7 +17,7 @@ export async function addMachine(client: MqttClient, machine: MqttMessagePayload
         client.publish(
             MQTT_TO_HARDWARE_TOPIC,
             JSON.stringify({
-                type: MESSAGE_TYPE.RES_ADD_MACHINE,
+                type: MESSAGE_TYPE.ADD_MACHINE,
                 payload: { status: 'success', id: machineData.id }
             })
         );
@@ -26,7 +26,7 @@ export async function addMachine(client: MqttClient, machine: MqttMessagePayload
         client.publish(
             MQTT_TO_HARDWARE_TOPIC,
             JSON.stringify({
-                type: MESSAGE_TYPE.RES_ADD_MACHINE,
+                type: MESSAGE_TYPE.ADD_MACHINE,
                 payload: { status: 'error', id: machineData.id, message: error.message }
             })
         );
@@ -45,7 +45,7 @@ export async function removeMachine(client: MqttClient, machine: MqttMessagePayl
         client.publish(
             MQTT_TO_HARDWARE_TOPIC,
             JSON.stringify({
-                type: MESSAGE_TYPE.RES_REMOVE_MACHINE,
+                type: MESSAGE_TYPE.REMOVE_MACHINE,
                 payload: { status: 'success', id: machineData.id }
             })
         );
@@ -54,7 +54,39 @@ export async function removeMachine(client: MqttClient, machine: MqttMessagePayl
         client.publish(
             MQTT_TO_HARDWARE_TOPIC,
             JSON.stringify({
-                type: MESSAGE_TYPE.RES_REMOVE_MACHINE,
+                type: MESSAGE_TYPE.REMOVE_MACHINE,
+                payload: { status: 'error', id: machineData.id, message: error.message }
+            })
+        );
+    }
+}
+
+export async function updateWashingStatus(client: MqttClient, machine: MqttMessagePayload): Promise<void> {
+    const machineData = machine as { id: string; status: LaundryStatus };
+    try {
+        await prisma.washingMachine.update({
+            where: {
+                id: machineData.id
+            },
+            data: {
+                status: machineData.status
+            }
+        });
+
+        client.publish(
+            MQTT_TO_HARDWARE_TOPIC,
+            JSON.stringify({
+                type: MESSAGE_TYPE.UPDATE_MACHINE_STATUS,
+                payload: { status: 'success', id: machineData.id }
+            })
+        );
+    } catch (error) {
+        logger.error('Error updating washing status:', error);
+        logger.error(error.message);
+        client.publish(
+            MQTT_TO_HARDWARE_TOPIC,
+            JSON.stringify({
+                type: MESSAGE_TYPE.UPDATE_MACHINE_STATUS,
                 payload: { status: 'error', id: machineData.id, message: error.message }
             })
         );
