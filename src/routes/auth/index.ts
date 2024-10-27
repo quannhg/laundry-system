@@ -1,7 +1,8 @@
 import { AuthResultDto } from '@dtos/out';
-import { authHandler } from '@handlers';
+import { authHandler, googleAuthHandler, logoutHandler } from '@handlers';
 import { Type } from '@sinclair/typebox';
 import { createRoutes } from '@utils';
+import { AuthInputDto } from '@dtos/in';
 
 export const authPlugin = createRoutes('Auth', [
     {
@@ -13,7 +14,29 @@ export const authPlugin = createRoutes('Auth', [
                 200: AuthResultDto
             }
         },
-        handler: authHandler.googleOAuth
+        handler: googleAuthHandler.googleOAuth
+    },
+    {
+        method: 'POST',
+        url: '/login',
+        schema: {
+            body: AuthInputDto,
+            response: {
+                200: AuthResultDto
+            }
+        },
+        handler: authHandler.login
+    },
+    {
+        method: 'POST',
+        url: '/signup',
+        schema: {
+            body: AuthInputDto,
+            response: {
+                200: AuthResultDto
+            }
+        },
+        handler: authHandler.signup
     },
     {
         method: 'DELETE',
@@ -23,6 +46,6 @@ export const authPlugin = createRoutes('Auth', [
                 200: Type.Null()
             }
         },
-        handler: authHandler.logout
+        handler: logoutHandler.logout
     }
 ]);

@@ -6,7 +6,7 @@ import { google } from 'googleapis';
 import { prisma } from '@repositories';
 import { cookieOptions } from '@constants';
 
-export const getUserInfo = async (authorizationCode: string) => {
+export const getGoogleUserInfo = async (authorizationCode: string) => {
     try {
         const googleOAuth2Client = new google.auth.OAuth2(envs.GOOGLE_CLIENT_ID, envs.GOOGLE_CLIENT_SECRET, envs.GOOGLE_REDIRECT_URL);
 
@@ -34,7 +34,7 @@ export const getUserInfo = async (authorizationCode: string) => {
 
 const googleOAuth: Handler<AuthResultDto, { Querystring: { code: string } }> = async (req, res) => {
     try {
-        const { userEmail, userName, isVerifiedEmail } = await getUserInfo(req.query.code);
+        const { userEmail, userName, isVerifiedEmail } = await getGoogleUserInfo(req.query.code);
 
         if (!isVerifiedEmail) {
             return res.status(406).send('Email needs to be verified for authentication.');
@@ -63,12 +63,6 @@ const googleOAuth: Handler<AuthResultDto, { Querystring: { code: string } }> = a
     }
 };
 
-const logout: Handler<null> = async (__req, res) => {
-    res.clearCookie('token');
-    return null;
-};
-
-export const authHandler = {
-    googleOAuth,
-    logout
+export const googleAuthHandler = {
+    googleOAuth
 };

@@ -12,8 +12,10 @@ datasource db {
 }
 
 model User {
-  id    String @id @default(cuid())
-  email String @unique @db.VarChar(50)
+  id       String  @id @default(cuid())
+  email    String? @unique @db.VarChar(50)
+  username String? @unique @db.VarChar(50)
+  password String?
 }
 
 model WashingMachine {
