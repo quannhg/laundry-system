@@ -4,6 +4,7 @@
 
 export * from './error.handler';
 export * from './user.handler';
+export * from './washingMachine.handler';
 export * from './auth/auth.handler';
 export * from './auth/googleAuth.handler';
 export * from './auth/logout.hander';
