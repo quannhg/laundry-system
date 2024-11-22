@@ -1,9 +1,9 @@
-import { ObjectId } from '@dtos/common';
 import { Static, Type } from '@sinclair/typebox';
 
 export const WashingMachineDto = Type.Object({
-    id: ObjectId,
-    status: Type.String()
+    idle: Type.Number(),
+    washing: Type.Number(),
+    dry: Type.Number(),
 });
 
 export type WashingMachineDto = Static<typeof WashingMachineDto>;

@@ -1,16 +1,18 @@
-import { UserDto } from '@dtos/out';
+import { UserResultDto } from '@dtos/out';
 import { usersHandler } from '@handlers';
 import { createRoutes } from '@utils';
+import { UserInputDto } from '../../dtos/in/user.dto';
 
 export const userPlugin = createRoutes('User', [
     {
         method: 'GET',
-        url: '',
+        url: '/:id',
         schema: {
+            params: UserInputDto,
             response: {
-                200: UserDto
-            }
+                200: UserResultDto,
+            },
         },
-        handler: usersHandler.getUserById
-    }
+        handler: usersHandler.getUserById,
+    },
 ]);

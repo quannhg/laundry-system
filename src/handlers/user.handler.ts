@@ -1,20 +1,30 @@
 import { USER_NOT_FOUND } from '@constants';
 import { prisma } from '@repositories';
-import { UserDto } from '@dtos/out';
+import { UserResultDto } from '@dtos/out';
 import { Handler } from '@interfaces';
+import { UserInputDto } from '../dtos/in/user.dto';
 
-const getUserById: Handler<UserDto> = async (req, res) => {
-    const userId = req.userId;
-    const user = await prisma.user.findUnique({
+const getUserById: Handler<UserResultDto, { Params: UserInputDto }> = async (req, res) => {
+    const userWithOrderCount = await prisma.user.findUnique({
         select: {
-            id: true
+            id: true,
+            username: true,
+            email: true,
+            avatarUrl: true,
+            phoneNumber: true,
+            _count: {
+                select: { orders: true },
+            },
         },
-        where: { id: userId }
+        where: { id: req.params.id },
     });
-    if (user === null) return res.badRequest(USER_NOT_FOUND);
-    return user;
+    if (userWithOrderCount === null) return res.badRequest(USER_NOT_FOUND);
+    return res.send({
+        ...userWithOrderCount,
+        orderCount: userWithOrderCount._count.orders,
+    });
 };
 
 export const usersHandler = {
-    getUserById
+    getUserById,
 };

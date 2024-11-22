@@ -1,7 +1,6 @@
 import { WashingMachineDto } from '@dtos/out';
 import { washingMachineHandler } from '@handlers';
 import { createRoutes } from '@utils';
-import { Type } from '@sinclair/typebox';
 
 export const washingMachinePlugin = createRoutes('Washing Machine', [
     {
@@ -9,9 +8,9 @@ export const washingMachinePlugin = createRoutes('Washing Machine', [
         url: '',
         schema: {
             response: {
-                200: Type.Array(WashingMachineDto)
-            }
+                200: WashingMachineDto,
+            },
         },
-        handler: washingMachineHandler.fetchWashingMachines
-    }
+        handler: washingMachineHandler.fetchWashingMachines,
+    },
 ]);

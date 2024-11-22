@@ -13,12 +13,13 @@ export function createServer(config: ServerConfig): FastifyInstance {
     app.register(import('@fastify/sensible'));
     app.register(import('@fastify/helmet'));
     app.register(import('@fastify/cors'), {
-        origin: envs.CORS_WHITE_LIST
+        // origin: envs.CORS_WHITE_LIST
+        origin: true,
     });
 
     app.register(import('@fastify/cookie'), {
         secret: envs.COOKIE_SECRET, // for cookies signature
-        hook: 'onRequest'
+        hook: 'onRequest',
     } as FastifyCookieOptions);
 
     // Swagger on production should be turned off
@@ -37,7 +38,7 @@ export function createServer(config: ServerConfig): FastifyInstance {
         host: 'mqtt://localhost:1883',
         username: 'python_test',
         password: 'secretpassword',
-        topics: [MQTT_TO_SERVER_TOPIC]
+        topics: [MQTT_TO_SERVER_TOPIC],
     });
 
     const shutdown = async () => {
@@ -48,7 +49,7 @@ export function createServer(config: ServerConfig): FastifyInstance {
     const start = async () => {
         await app.listen({
             host: config.host,
-            port: config.port
+            port: config.port,
         });
         await app.ready();
         if (!envs.isProd) {
@@ -63,6 +64,6 @@ export function createServer(config: ServerConfig): FastifyInstance {
     return {
         ...app,
         start,
-        shutdown
+        shutdown,
     };
 }
