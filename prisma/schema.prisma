@@ -23,28 +23,32 @@ model User {
 }
 
 model WashingMachine {
-  id     String        @id @default(cuid())
+  id     String       @id @default(cuid())
   status LaundryStatus
 
   orders Order[]
 }
 
 model Order {
-  id          String         @id @default(cuid())
-  user        User           @relation(fields: [userId], references: [id])
-  userId      String
-  machine     WashingMachine @relation(fields: [machineId], references: [id])
-  machineId   String
-  status      OrderStatus
-  washingMode WashingMode
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id            String         @id @default(cuid())
+  user          User           @relation(fields: [userId], references: [id])
+  userId        String
+  machine       WashingMachine @relation(fields: [machineId], references: [id])
+  machineId     String
+  status        OrderStatus
+  washingMode   WashingMode
+  isSoak        Boolean?       @default(false)
+  paymentMethod String?
+  price         Int?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 enum LaundryStatus {
   IDLE
   WASHING
   DRYING
+  BROKEN
 }
 
 enum OrderStatus {
@@ -52,10 +56,11 @@ enum OrderStatus {
   WASHING
   FINISHED
   CONFIRMED
+  CANCELLED
+  REFUNDED
 }
 
 enum WashingMode {
   NORMAL
   THOROUGHLY
-  SOAK
 }

@@ -7,3 +7,4 @@ export * from './cookie';
 export * from './crypt';
 export * from './errorMessages';
 export * from './mqtt';
+export * from './washingPrice';
