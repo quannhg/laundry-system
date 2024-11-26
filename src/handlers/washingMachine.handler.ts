@@ -1,7 +1,6 @@
 import { prisma } from '@repositories';
 import { Handler } from '@interfaces';
 import { WashingMachineDto } from '@dtos/out';
-import { logger } from '@utils';
 
 const fetchWashingMachines: Handler<WashingMachineDto> = async (_req, res) => {
     try {
@@ -18,7 +17,6 @@ const fetchWashingMachines: Handler<WashingMachineDto> = async (_req, res) => {
             dry: washingMachines.find((machine) => machine.status === 'DRYING')?._count.status || 0,
         };
 
-        logger.debug(result);
         return res.send(result);
     } catch (error) {
         return res.internalServerError(error);

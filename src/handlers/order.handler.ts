@@ -1,13 +1,13 @@
 import { prisma } from '@repositories';
 import { Handler } from '@interfaces';
 import { logger } from '@utils';
-import { CreateOrderInputDto, GetAllOrderInputDto, UpdateStatusOrderInputDto } from '@dtos/in';
+import { CreateOrderInputDto, UpdateStatusOrderInputDto } from '@dtos/in';
 import { CreateOrderResultDto, GetAllOrderResultDto, UpdateStatusOrderResultDto } from '@dtos/out';
 import { WashingMode, OrderStatus } from '@prisma/client';
 import { PaymentMethod, SoakPrice, WashingPrice } from '@constants';
 const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = async (req, res) => {
     try {
-        const { userId, washingMode, isSoak, paymentMethod } = req.body;
+        const { washingMode, isSoak, paymentMethod } = req.body;
         if (!PaymentMethod.includes(paymentMethod)) {
             return res.status(400).send({ error: 'Invalid payment method' });
         }
@@ -38,7 +38,7 @@ const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = asy
         }
         const order = await prisma.order.create({
             data: {
-                userId,
+                userId: req.userId,
                 machineId: washingMachine.id,
                 washingMode: washingModeDb,
                 status: OrderStatus.PENDING,
@@ -53,11 +53,10 @@ const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = asy
         res.status(500).send({ error: 'Internal Server Error' });
     }
 };
-const getAll: Handler<GetAllOrderResultDto, { Querystring: GetAllOrderInputDto }> = async (req, res) => {
+const getAll: Handler<GetAllOrderResultDto> = async (req, res) => {
     try {
-        const { userId } = req.query;
         const orders = await prisma.order.findMany({
-            where: { userId },
+            where: { userId: req.userId },
         });
         res.status(200).send({ orders });
     } catch (error) {

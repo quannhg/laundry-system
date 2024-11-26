@@ -1,6 +1,6 @@
 import { createRoutes } from '@utils';
 import { ordersHandle } from '../../handlers/order.handler';
-import { CreateOrderInputDto, GetAllOrderInputDto, UpdateStatusOrderInputDto } from '@dtos/in';
+import { CreateOrderInputDto, UpdateStatusOrderInputDto } from '@dtos/in';
 import { CreateOrderResultDto, GetAllOrderResultDto, UpdateStatusOrderResultDto } from '@dtos/out';
 
 export const orderPlugin = createRoutes('Order', [
@@ -12,6 +12,7 @@ export const orderPlugin = createRoutes('Order', [
             response: {
                 200: CreateOrderResultDto,
             },
+            security: [{ bearerAuth: [] }],
         },
         handler: ordersHandle.create,
     },
@@ -19,10 +20,10 @@ export const orderPlugin = createRoutes('Order', [
         method: 'GET',
         url: '',
         schema: {
-            querystring: GetAllOrderInputDto,
             response: {
                 200: GetAllOrderResultDto,
             },
+            security: [{ bearerAuth: [] }],
         },
         handler: ordersHandle.getAll,
     },
@@ -34,6 +35,7 @@ export const orderPlugin = createRoutes('Order', [
             response: {
                 200: UpdateStatusOrderResultDto,
             },
+            security: [{ bearerAuth: [] }],
         },
         handler: ordersHandle.updateStatus,
     },

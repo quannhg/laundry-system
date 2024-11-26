@@ -10,6 +10,7 @@ export const washingMachinePlugin = createRoutes('Washing Machine', [
             response: {
                 200: WashingMachineDto,
             },
+            security: [{ bearerAuth: [] }],
         },
         handler: washingMachineHandler.fetchWashingMachines,
     },
