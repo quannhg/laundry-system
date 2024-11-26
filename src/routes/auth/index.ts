@@ -11,10 +11,10 @@ export const authPlugin = createRoutes('Auth', [
         schema: {
             summary: 'Redirect URL of google auth',
             response: {
-                200: AuthResultDto
-            }
+                200: AuthResultDto,
+            },
         },
-        handler: googleAuthHandler.googleOAuth
+        handler: googleAuthHandler.googleOAuth,
     },
     {
         method: 'POST',
@@ -22,10 +22,10 @@ export const authPlugin = createRoutes('Auth', [
         schema: {
             body: AuthInputDto,
             response: {
-                200: AuthResultDto
-            }
+                200: AuthResultDto,
+            },
         },
-        handler: authHandler.login
+        handler: authHandler.login,
     },
     {
         method: 'POST',
@@ -33,19 +33,19 @@ export const authPlugin = createRoutes('Auth', [
         schema: {
             body: AuthInputDto,
             response: {
-                200: AuthResultDto
-            }
+                200: AuthResultDto,
+            },
         },
-        handler: authHandler.signup
+        handler: authHandler.signup,
     },
     {
         method: 'DELETE',
         url: '/logout',
         schema: {
             response: {
-                200: Type.Null()
-            }
+                200: Type.Null(),
+            },
         },
-        handler: logoutHandler.logout
-    }
+        handler: logoutHandler.logout,
+    },
 ]);

@@ -3,7 +3,7 @@ import { Handler } from '@interfaces';
 import jwt from 'jsonwebtoken';
 import { envs } from '@configs';
 import { prisma } from '@repositories';
-import { cookieOptions, LOGIN_FAIL, SALT_ROUNDS, USER_NOT_FOUND } from '@constants';
+import { LOGIN_FAIL, SALT_ROUNDS, USER_NOT_FOUND } from '@constants';
 import { AuthInputDto } from '@dtos/in';
 import { compare, hash } from 'bcrypt';
 
@@ -12,9 +12,9 @@ const login: Handler<AuthResultDto, { Body: AuthInputDto }> = async (req, res) =
         select: {
             id: true,
             username: true,
-            password: true
+            password: true,
         },
-        where: { username: req.body.username }
+        where: { username: req.body.username },
     });
     if (!user) return res.badRequest(USER_NOT_FOUND);
 
@@ -22,33 +22,33 @@ const login: Handler<AuthResultDto, { Body: AuthInputDto }> = async (req, res) =
     if (!correctPassword) return res.badRequest(LOGIN_FAIL);
 
     const userToken = jwt.sign({ userId: user.id }, envs.JWT_SECRET);
-    res.setCookie('token', userToken, cookieOptions);
 
     return {
         id: user.id,
-        username: user.username as string
+        username: user.username as string,
+        token: userToken,
     };
 };
 
-const signup: Handler<AuthResultDto, { Body: AuthInputDto }> = async (req, res) => {
+const signup: Handler<AuthResultDto, { Body: AuthInputDto }> = async (req) => {
     const hashPassword = await hash(req.body.password, SALT_ROUNDS);
     const user = await prisma.user.create({
         data: {
             username: req.body.username,
-            password: hashPassword
-        }
+            password: hashPassword,
+        },
     });
 
     const userToken = jwt.sign({ userId: user.id }, envs.JWT_SECRET);
-    res.setCookie('token', userToken, cookieOptions);
 
     return {
         id: user.id,
-        username: user.username as string
+        username: user.username as string,
+        token: userToken,
     };
 };
 
 export const authHandler = {
     login,
-    signup
+    signup,
 };

@@ -7,13 +7,13 @@ export function createRoutes(swaggerTag: HandlerTag, routesOptions: RouteOptions
                 ...options,
                 schema: {
                     ...options.schema,
-                    tags: [swaggerTag]
+                    tags: [swaggerTag],
                 },
                 /**
                  * True by default. See https://www.fastify.dev/docs/latest/Reference/Server/#exposeHeadRoutes
                  * About HEAD http method: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/HEAD
                  */
-                exposeHeadRoute: false
+                exposeHeadRoute: false,
             });
         });
     };

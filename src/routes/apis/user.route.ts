@@ -1,17 +1,16 @@
 import { UserResultDto } from '@dtos/out';
 import { usersHandler } from '@handlers';
 import { createRoutes } from '@utils';
-import { UserInputDto } from '../../dtos/in/user.dto';
 
 export const userPlugin = createRoutes('User', [
     {
         method: 'GET',
-        url: '/:id',
+        url: '/',
         schema: {
-            params: UserInputDto,
             response: {
                 200: UserResultDto,
             },
+            security: [{ bearerAuth: [] }],
         },
         handler: usersHandler.getUserById,
     },

@@ -7,7 +7,6 @@ import { UserInputDto } from '../dtos/in/user.dto';
 const getUserById: Handler<UserResultDto, { Params: UserInputDto }> = async (req, res) => {
     const userWithOrderCount = await prisma.user.findUnique({
         select: {
-            id: true,
             username: true,
             email: true,
             avatarUrl: true,
@@ -16,12 +15,14 @@ const getUserById: Handler<UserResultDto, { Params: UserInputDto }> = async (req
                 select: { orders: true },
             },
         },
-        where: { id: req.params.id },
+        where: { id: req.userId },
     });
     if (userWithOrderCount === null) return res.badRequest(USER_NOT_FOUND);
     return res.send({
         ...userWithOrderCount,
         orderCount: userWithOrderCount._count.orders,
+        avatarUrl: 'https://lh3.googleusercontent.com/a/ACg8ocIjkHVXfD15PLabkbAx1TlsWTsTf8sT_mXtwckwxcBV4UtMi4j_=s360-c-no',
+        name: 'Quan',
     });
 };
 

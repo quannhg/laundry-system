@@ -4,9 +4,15 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 import jwt from 'jsonwebtoken';
 
 export async function verifyToken(req: FastifyRequest, res: FastifyReply) {
-    const token = req.cookies.token;
+    // Get the Authorization header
+    const authHeader = req.headers['authorization'];
 
-    if (!token) return res.unauthorized(MUST_LOGIN_FIRST);
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.unauthorized(MUST_LOGIN_FIRST);
+    }
+
+    // Extract the token from the header
+    const token = authHeader.slice(7).trim();
 
     try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

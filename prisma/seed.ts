@@ -4,14 +4,6 @@ import { LaundryStatus, PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 const SALT_ROUNDS = 10;
 
-const user = {
-    username: 'admin@domain.com',
-    password: 'secret_password',
-    email: 'admin@domain.com',
-    avatarUrl: 'https://lh3.googleusercontent.com/a/ACg8ocIjkHVXfD15PLabkbAx1TlsWTsTf8sT_mXtwckwxcBV4UtMi4j_=s360-c-no',
-    phoneNumber: '0123456789',
-};
-
 async function generateWashingMachines() {
     const washingMachines = [
         {
@@ -78,10 +70,20 @@ async function generateWashingMachines() {
 }
 
 async function generateUsers() {
+    const user = {
+        name: 'Alex',
+        username: 'admin@domain.com',
+        password: 'secret_password',
+        email: 'admin@domain.com',
+        avatarUrl: 'https://lh3.googleusercontent.com/a/ACg8ocIjkHVXfD15PLabkbAx1TlsWTsTf8sT_mXtwckwxcBV4UtMi4j_=s360-c-no',
+        phoneNumber: '0123456789',
+    };
+
     const hashPassword = hashSync(user.password, SALT_ROUNDS);
     const sampleUser = await prisma.user.create({
         data: {
             username: user.username,
+            name: user.name,
             password: hashPassword,
             email: user.email,
             avatarUrl: user.avatarUrl,
