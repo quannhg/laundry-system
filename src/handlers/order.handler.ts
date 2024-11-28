@@ -5,6 +5,7 @@ import { CreateOrderInputDto, UpdateStatusOrderInputDto } from '@dtos/in';
 import { CreateOrderResultDto, GetAllOrderResultDto, UpdateStatusOrderResultDto } from '@dtos/out';
 import { WashingMode, OrderStatus } from '@prisma/client';
 import { PaymentMethod, SoakPrice, WashingPrice } from '@constants';
+import admin from 'firebase-admin';
 const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = async (req, res) => {
     try {
         const { washingMode, isSoak, paymentMethod } = req.body;
@@ -47,6 +48,10 @@ const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = asy
                 paymentMethod,
             },
         });
+
+        // Send notification about the order creation
+        await sendCreatingNotification(req.userId, order.id);
+
         res.status(201).send(order);
     } catch (error) {
         logger.error(`Error creating order: ${error}`);
@@ -104,6 +109,29 @@ const updateStatus: Handler<UpdateStatusOrderResultDto, { Body: UpdateStatusOrde
         res.status(500).send({ error: 'Internal Server Error' });
     }
 };
+
+async function sendCreatingNotification(userId: string, orderId: string) {
+    try {
+        const userToken = await prisma.fCMToken.findFirst({ where: { userId } });
+
+        if (!userToken) {
+            logger.warn(`No FCM tokens found for user ${userId}`);
+            return;
+        }
+
+        const message = {
+            notification: {
+                title: 'Order Created',
+                body: `Your order ${orderId} has been successfully created.`,
+            },
+            token: userToken.token,
+        };
+
+        await admin.messaging().send(message);
+    } catch (error) {
+        logger.error('Error sending notification:', error);
+    }
+}
 
 export const ordersHandle = {
     create,
