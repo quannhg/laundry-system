@@ -9,50 +9,62 @@ async function generateWashingMachines() {
         {
             id: 'machine1',
             status: LaundryStatus.IDLE,
+            machineNo: 1,
         },
         {
             id: 'machine2',
             status: LaundryStatus.WASHING,
+            machineNo: 2,
         },
         {
             id: 'machine3',
             status: LaundryStatus.DRYING,
+            machineNo: 3,
         },
         {
             id: 'machine4',
             status: LaundryStatus.WASHING,
+            machineNo: 4,
         },
         {
             id: 'machine5',
             status: LaundryStatus.IDLE,
+            machineNo: 5,
         },
         {
             id: 'machine6',
             status: LaundryStatus.IDLE,
+            machineNo: 6,
         },
         {
             id: 'machine7',
             status: LaundryStatus.IDLE,
+            machineNo: 7,
         },
         {
             id: 'machine8',
             status: LaundryStatus.IDLE,
+            machineNo: 8,
         },
         {
             id: 'machine9',
             status: LaundryStatus.WASHING,
+            machineNo: 9,
         },
         {
             id: 'machine10',
             status: LaundryStatus.WASHING,
+            machineNo: 10,
         },
         {
             id: 'machine11',
             status: LaundryStatus.DRYING,
+            machineNo: 11,
         },
         {
             id: 'machine12',
             status: LaundryStatus.DRYING,
+            machineNo: 12,
         },
     ];
 

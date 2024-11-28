@@ -36,6 +36,7 @@ model FCMToken {
 model WashingMachine {
   id     String       @id @default(cuid())
   status LaundryStatus
+  machineNo Int
 
   orders Order[]
 }
@@ -51,6 +52,7 @@ model Order {
   isSoak        Boolean?       @default(false)
   paymentMethod String?
   price         Int?
+  authCode String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }

@@ -46,11 +46,28 @@ const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = asy
                 price: washingPrice,
                 isSoak: isSoak,
                 paymentMethod,
+                authCode: Math.floor(100000 + Math.random() * 900000).toString(),
+            },
+            select: {
+                id: true,
+                authCode: true,
+                price: true,
+                status: true,
+                washingMode: true,
+                isSoak: true,
+                paymentMethod: true,
+                createdAt: true,
+                updatedAt: true,
+                machine: {
+                    select: {
+                        machineNo: true,
+                    },
+                },
             },
         });
 
         // Send notification about the order creation
-        await sendCreatingNotification(req.userId, order.id);
+        await sendCreatingNotification(req.userId, order);
 
         res.status(201).send(order);
     } catch (error) {
@@ -103,6 +120,7 @@ const updateStatus: Handler<UpdateStatusOrderResultDto, { Body: UpdateStatusOrde
                 status: orderStatusDb,
             },
         });
+
         res.status(200).send(order);
     } catch (error) {
         logger.error(`Error updating order status: ${error}`);
@@ -110,7 +128,8 @@ const updateStatus: Handler<UpdateStatusOrderResultDto, { Body: UpdateStatusOrde
     }
 };
 
-async function sendCreatingNotification(userId: string, orderId: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function sendCreatingNotification(userId: string, order: any) {
     try {
         const userToken = await prisma.fCMToken.findFirst({ where: { userId } });
 
@@ -122,14 +141,21 @@ async function sendCreatingNotification(userId: string, orderId: string) {
         const message = {
             notification: {
                 title: 'Order Created',
-                body: `Your order ${orderId} has been successfully created.`,
+                body: `Your order has been successfully created.`,
+            },
+            data: {
+                orderId: order.id,
+                status: OrderStatus.PENDING,
+                time: new Date().toISOString(),
+                orderCode: order.authCode,
+                machineNumber: order.machine.machineNo.toString(),
             },
             token: userToken.token,
         };
 
         await admin.messaging().send(message);
     } catch (error) {
-        logger.error('Error sending notification:', error);
+        logger.error(`Error sending notification: ${error}`);
     }
 }
 

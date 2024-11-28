@@ -7,12 +7,13 @@ import admin from 'firebase-admin';
 import { publishMqttMessage } from '@utils';
 
 export async function addMachine(client: MqttClient, machine: MqttMessagePayload): Promise<void> {
-    const machineData = machine as { id: string };
+    const machineData = machine as { id: string; machineNo: number };
     try {
         await prisma.washingMachine.create({
             data: {
                 id: machineData.id,
                 status: LaundryStatus.IDLE,
+                machineNo: machineData.machineNo,
             },
         });
 
