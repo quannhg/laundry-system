@@ -1,6 +1,8 @@
 import { UserResultDto } from '@dtos/out';
 import { usersHandler } from '@handlers';
 import { createRoutes } from '@utils';
+import { NotificationResultDto } from '../../dtos/out/notification.dto';
+import { NotificationInputDto } from '../../dtos/in/notification.dto';
 
 export const userPlugin = createRoutes('User', [
     {
@@ -13,5 +15,17 @@ export const userPlugin = createRoutes('User', [
             security: [{ bearerAuth: [] }],
         },
         handler: usersHandler.getUserById,
+    },
+    {
+        method: 'POST',
+        url: '/FCMToken',
+        schema: {
+            body: NotificationInputDto,
+            response: {
+                200: NotificationResultDto,
+            },
+            security: [{ bearerAuth: [] }],
+        },
+        handler: usersHandler.addFCMToken,
     },
 ]);
