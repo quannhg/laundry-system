@@ -6,6 +6,9 @@ import { customErrorHandler } from '@handlers';
 import { logger } from '@utils';
 import { fastifyMQTT } from './mqtt/index';
 import { MQTT_TO_SERVER_TOPIC } from './constants/mqtt';
+import admin from 'firebase-admin';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 export function createServer(config: ServerConfig): FastifyInstance {
     const app = fastify({ logger });
@@ -39,6 +42,12 @@ export function createServer(config: ServerConfig): FastifyInstance {
         username: 'python_test',
         password: 'secretpassword',
         topics: [MQTT_TO_SERVER_TOPIC],
+    });
+
+    // firebase
+    const serviceAccount = JSON.parse(readFileSync(join(__dirname, '../firebaseServiceAccountKey.json'), 'utf-8'));
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
     });
 
     const shutdown = async () => {
