@@ -80,10 +80,9 @@ export async function updateWashingStatus(client: MqttClient, machine: MqttMessa
         if (machineData.status === LaundryStatus.IDLE) {
             // Handle order completion
             const completedOrder = await handleOrderCompletion(machineData.id);
-            logger.debug('Completed orders:', completedOrder);
             if (completedOrder) {
                 // Send completion notification
-                await sendCompletionNotification(completedOrder.userId, completedOrder.id);
+                await sendCompletionNotification(completedOrder.userId, completedOrder);
             }
         }
 
@@ -122,6 +121,16 @@ async function handleOrderCompletion(machineId: string) {
             data: {
                 status: OrderStatus.FINISHED,
             },
+            select: {
+                id: true,
+                userId: true,
+                status: true,
+                machine: {
+                    select: {
+                        machineNo: true,
+                    },
+                },
+            },
         });
 
         return updatedOrder;
@@ -131,25 +140,32 @@ async function handleOrderCompletion(machineId: string) {
     }
 }
 
-async function sendCompletionNotification(userId: string, orderId: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function sendCompletionNotification(userId: string, order: any) {
     try {
-        const tokens = await prisma.fCMToken.findMany({ where: { userId: userId } });
+        const userToken = await prisma.fCMToken.findFirst({ where: { userId } });
 
-        if (tokens.length === 0) {
+        if (!userToken) {
             logger.warn(`No FCM tokens found for user ${userId}`);
             return;
         }
 
-        const message: admin.messaging.MulticastMessage = {
+        const message: admin.messaging.Message = {
             notification: {
-                title: `Order ${orderId} finished`,
+                title: `Order finished`,
                 body: 'Your laundry is done.',
             },
-            tokens: tokens.map((t) => t.token),
+            data: {
+                orderId: order.id,
+                status: OrderStatus.FINISHED,
+                time: new Date().toISOString(),
+                machineNumber: order.machine.machineNo.toString(),
+            },
+            token: userToken.token,
         };
 
-        await admin.messaging().sendEachForMulticast(message);
+        await admin.messaging().send(message);
     } catch (error) {
-        logger.error('Error sending notification:', error);
+        logger.error(`Error sending notification: ${error}`);
     }
 }
