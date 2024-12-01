@@ -18,7 +18,7 @@ export const userPlugin = createRoutes('User', [
     },
     {
         method: 'POST',
-        url: '/FCMToken',
+        url: '/fcm-token',
         schema: {
             body: NotificationInputDto,
             response: {
