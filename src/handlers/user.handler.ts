@@ -5,7 +5,6 @@ import { Handler } from '@interfaces';
 import { UserInputDto } from '../dtos/in/user.dto';
 import { NotificationInputDto } from '../dtos/in/notification.dto';
 import { NotificationResultDto } from '../dtos/out/notification.dto';
-import admin from 'firebase-admin';
 
 const getUserById: Handler<UserResultDto, { Params: UserInputDto }> = async (req, res) => {
     const userWithOrderCount = await prisma.user.findUnique({
@@ -40,16 +39,6 @@ const addFCMToken: Handler<NotificationResultDto, { Body: NotificationInputDto }
                 userId,
             },
         });
-
-        const message = {
-            notification: {
-                title: 'test from server',
-                body: 'body: body',
-            },
-            token: token,
-        };
-
-        await admin.messaging().send(message);
 
         return res.send({ status: 'success' });
     } catch (error) {
