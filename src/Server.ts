@@ -18,6 +18,7 @@ export function createServer(config: ServerConfig): FastifyInstance {
     app.register(import('@fastify/cors'), {
         // origin: envs.CORS_WHITE_LIST
         origin: true,
+        credentials: true,
     });
 
     app.register(import('@fastify/cookie'), {
@@ -38,7 +39,7 @@ export function createServer(config: ServerConfig): FastifyInstance {
 
     // Connect to MQTT broker
     app.register(fastifyMQTT, {
-        host: 'mqtt://localhost:1883',
+        host: 'mqtt://14.225.192.183:1884',
         username: 'python_test',
         password: 'secretpassword',
         topics: [MQTT_TO_SERVER_TOPIC],

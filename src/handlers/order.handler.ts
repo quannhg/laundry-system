@@ -90,7 +90,7 @@ const updateStatus: Handler<UpdateStatusOrderResultDto, { Body: UpdateStatusOrde
     try {
         const { orderId, status } = req.body;
         let orderStatusDb;
-        switch (status) {
+        switch (status.toLowerCase()) {
             case 'pending':
                 orderStatusDb = OrderStatus.PENDING;
                 break;
