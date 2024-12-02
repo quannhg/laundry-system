@@ -19,6 +19,7 @@ model User {
   password    String?
   avatarUrl   String?
   phoneNumber String?
+  enableNotification Boolean @default(true)
 
   orders Order[]
   FCMToken FCMToken[]

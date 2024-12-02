@@ -3,6 +3,7 @@ import { usersHandler } from '@handlers';
 import { createRoutes } from '@utils';
 import { NotificationResultDto } from '../../dtos/out/notification.dto';
 import { NotificationInputDto } from '../../dtos/in/notification.dto';
+import { UserInputDto } from '@dtos/in';
 
 export const userPlugin = createRoutes('User', [
     {
@@ -15,6 +16,18 @@ export const userPlugin = createRoutes('User', [
             security: [{ bearerAuth: [] }],
         },
         handler: usersHandler.getUserById,
+    },
+    {
+        method: 'PUT',
+        url: '/',
+        schema: {
+            body: UserInputDto,
+            response: {
+                200: UserResultDto,
+            },
+            security: [{ bearerAuth: [] }],
+        },
+        handler: usersHandler.updateUser,
     },
     {
         method: 'POST',

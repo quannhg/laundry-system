@@ -7,6 +7,7 @@ export const UserResultDto = Type.Object({
     avatarUrl: Type.String(),
     phoneNumber: Type.String(),
     orderCount: Type.Number(),
+    enableNotification: Type.Boolean(),
 });
 
 export type UserResultDto = Static<typeof UserResultDto>;

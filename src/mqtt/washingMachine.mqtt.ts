@@ -1,9 +1,8 @@
 import { prisma } from '@repositories';
 import { LaundryStatus, OrderStatus } from '@prisma/client';
 import { MqttClient } from 'mqtt';
-import { logger } from '@utils';
+import { logger, pushNotification } from '@utils';
 import { MESSAGE_TYPE, MQTT_TO_HARDWARE_TOPIC } from '@constants';
-import admin from 'firebase-admin';
 import { publishMqttMessage } from '@utils';
 
 export async function addMachine(client: MqttClient, machine: MqttMessagePayload): Promise<void> {
@@ -143,14 +142,7 @@ async function handleOrderCompletion(machineId: string) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendCompletionNotification(userId: string, order: any) {
     try {
-        const userToken = await prisma.fCMToken.findFirst({ where: { userId } });
-
-        if (!userToken) {
-            logger.warn(`No FCM tokens found for user ${userId}`);
-            return;
-        }
-
-        const message: admin.messaging.Message = {
+        const message = {
             notification: {
                 title: `Order finished`,
                 body: 'Your laundry is done.',
@@ -161,10 +153,9 @@ async function sendCompletionNotification(userId: string, order: any) {
                 time: new Date().toISOString(),
                 machineNumber: order.machine.machineNo.toString(),
             },
-            token: userToken.token,
         };
 
-        await admin.messaging().send(message);
+        await pushNotification(userId, message);
     } catch (error) {
         logger.error(`Error sending notification: ${error}`);
     }

@@ -5,7 +5,7 @@ import { CreateOrderInputDto, UpdateStatusOrderInputDto } from '@dtos/in';
 import { CreateOrderResultDto, GetAllOrderResultDto, UpdateStatusOrderResultDto } from '@dtos/out';
 import { WashingMode, OrderStatus } from '@prisma/client';
 import { PaymentMethod, SoakPrice, WashingPrice } from '@constants';
-import admin from 'firebase-admin';
+import { pushNotification } from '@utils';
 const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = async (req, res) => {
     try {
         const { washingMode, isSoak, paymentMethod } = req.body;
@@ -131,13 +131,6 @@ const updateStatus: Handler<UpdateStatusOrderResultDto, { Body: UpdateStatusOrde
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendCreatingNotification(userId: string, order: any) {
     try {
-        const userToken = await prisma.fCMToken.findFirst({ where: { userId } });
-
-        if (!userToken) {
-            logger.warn(`No FCM tokens found for user ${userId}`);
-            return;
-        }
-
         const message = {
             notification: {
                 title: 'Order Created',
@@ -150,10 +143,9 @@ async function sendCreatingNotification(userId: string, order: any) {
                 orderCode: order.authCode,
                 machineNumber: order.machine.machineNo.toString(),
             },
-            token: userToken.token,
         };
 
-        await admin.messaging().send(message);
+        await pushNotification(userId, message);
     } catch (error) {
         logger.error(`Error sending notification: ${error}`);
     }
