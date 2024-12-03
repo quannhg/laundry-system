@@ -39,9 +39,6 @@ export function createServer(config: ServerConfig): FastifyInstance {
 
     // Connect to MQTT broker
     app.register(fastifyMQTT, {
-        host: 'mqtt://14.225.192.183:1884',
-        username: 'python_test',
-        password: 'secretpassword',
         topics: [MQTT_TO_SERVER_TOPIC],
     });
 

@@ -1,8 +1,9 @@
-import mqtt, { MqttClient } from 'mqtt';
+import { MqttClient } from 'mqtt';
 import { logger } from '@utils';
 import { addMachine, removeMachine, updateWashingStatus } from './washingMachine.mqtt';
 import { FastifyInstance } from 'fastify';
 import { MESSAGE_TYPE } from '@constants';
+import { mqttClient } from './client';
 
 function subscribeTopics(client: MqttClient, topics: string[]) {
     topics.forEach((topic) => {
@@ -37,11 +38,14 @@ function subscribeTopics(client: MqttClient, topics: string[]) {
 }
 
 export function fastifyMQTT(fastify: FastifyInstance, options: MqttConfig, next: (err?: Error) => void) {
-    const { host, topics, ...mqttOptions } = options;
-    const client = mqtt.connect(host, mqttOptions);
+    const client = mqttClient;
 
     client.on('connect', () => {
-        subscribeTopics(client, topics);
+        subscribeTopics(client, options.topics);
+    });
+
+    client.on('error', (err) => {
+        logger.error(`MQTT error: ${err.message}`);
     });
 
     if (fastify.mqtt) {

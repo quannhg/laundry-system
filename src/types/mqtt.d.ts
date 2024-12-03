@@ -1,7 +1,4 @@
 type MqttConfig = {
-    host: string;
-    username: string;
-    password: string;
     topics: string[];
 };
 
