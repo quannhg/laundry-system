@@ -4,8 +4,10 @@ import { logger } from '@utils';
 import { CreateOrderInputDto, UpdateStatusOrderInputDto } from '@dtos/in';
 import { CreateOrderResultDto, GetAllOrderResultDto, UpdateStatusOrderResultDto } from '@dtos/out';
 import { WashingMode, OrderStatus } from '@prisma/client';
-import { PaymentMethod, SoakPrice, WashingPrice } from '@constants';
+import { MESSAGE_TYPE, MQTT_TO_HARDWARE_TOPIC, PaymentMethod, SoakPrice, WashingPrice } from '@constants';
 import { pushNotification } from '@utils';
+import { mqttClient } from '../mqtt/client';
+
 const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = async (req, res) => {
     try {
         const { washingMode, isSoak, paymentMethod } = req.body;
@@ -60,11 +62,20 @@ const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = asy
                 updatedAt: true,
                 machine: {
                     select: {
+                        id: true,
                         machineNo: true,
                     },
                 },
             },
         });
+
+        mqttClient.publish(
+            MQTT_TO_HARDWARE_TOPIC,
+            JSON.stringify({
+                type: MESSAGE_TYPE.SEND_AUTHENTICATION_CODE,
+                payload: { id: order.machine.id, code: order.authCode },
+            }),
+        );
 
         // Send notification about the order creation
         await sendCreatingNotification(req.userId, order);
