@@ -6,13 +6,21 @@ import { MESSAGE_TYPE, MQTT_TO_HARDWARE_TOPIC } from '@constants';
 import { publishMqttMessage } from '@utils';
 
 export async function addMachine(client: MqttClient, machine: MqttMessagePayload): Promise<void> {
-    const machineData = machine as { id: string; machineNo: number };
+    const machineData = machine as { id: string };
     try {
+        const maxMachineNo = await prisma.washingMachine.aggregate({
+            _max: {
+                machineNo: true,
+            },
+        });
+
+        const newMachineNo = (maxMachineNo._max.machineNo || 0) + 1;
+
         await prisma.washingMachine.create({
             data: {
                 id: machineData.id,
                 status: LaundryStatus.IDLE,
-                machineNo: machineData.machineNo,
+                machineNo: newMachineNo,
             },
         });
 
@@ -24,7 +32,7 @@ export async function addMachine(client: MqttClient, machine: MqttMessagePayload
             }),
         );
     } catch (error) {
-        logger.error('Error adding machine:', error.message);
+        logger.error(`Error adding machine: ${error.message}`);
         client.publish(
             MQTT_TO_HARDWARE_TOPIC,
             JSON.stringify({
