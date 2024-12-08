@@ -84,7 +84,10 @@ export async function updateWashingStatus(client: MqttClient, machine: MqttMessa
             },
         });
 
-        if (machineData.status === LaundryStatus.IDLE) {
+        if (machineData.status === LaundryStatus.WASHING) {
+            // Handle order completion
+            await handleOrderWashing(machineData.id);
+        } else if (machineData.status === LaundryStatus.IDLE) {
             // Handle order completion
             const completedOrder = await handleOrderCompletion(machineData.id);
             if (completedOrder) {
@@ -99,11 +102,51 @@ export async function updateWashingStatus(client: MqttClient, machine: MqttMessa
             payload: { status: 'success', id: machineData.id },
         });
     } catch (error) {
-        logger.error('Error updating washing status:', error);
+        logger.error(`Error updating washing status: ${error}`);
         publishMqttMessage(client, {
             type: MESSAGE_TYPE.UPDATE_MACHINE_STATUS,
             payload: { status: 'error', id: machineData.id, message: error.message },
         });
+    }
+}
+
+async function handleOrderWashing(machineId: string) {
+    try {
+        const orders = await prisma.order.findMany({
+            where: {
+                machineId: machineId,
+                status: OrderStatus.PENDING,
+            },
+        });
+
+        if (orders.length !== 1) {
+            throw new Error(`Unexpected number of orders found: ${orders.length}`);
+        }
+
+        const orderToUpdate = orders[0];
+        const updatedOrder = await prisma.order.update({
+            where: {
+                id: orderToUpdate.id,
+            },
+            data: {
+                status: OrderStatus.WASHING,
+            },
+            select: {
+                id: true,
+                userId: true,
+                status: true,
+                machine: {
+                    select: {
+                        machineNo: true,
+                    },
+                },
+            },
+        });
+
+        return updatedOrder;
+    } catch (error) {
+        logger.error(`Error updating order status: ${error}`);
+        throw new Error('Order update failed');
     }
 }
 

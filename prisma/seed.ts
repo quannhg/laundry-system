@@ -18,7 +18,7 @@ async function generateWashingMachines() {
         },
         {
             id: 'machine3',
-            status: LaundryStatus.DRYING,
+            status: LaundryStatus.RINSING,
             machineNo: 3,
         },
         {
@@ -58,12 +58,12 @@ async function generateWashingMachines() {
         },
         {
             id: 'machine11',
-            status: LaundryStatus.DRYING,
+            status: LaundryStatus.RINSING,
             machineNo: 11,
         },
         {
             id: 'machine12',
-            status: LaundryStatus.DRYING,
+            status: LaundryStatus.SPINNING,
             machineNo: 12,
         },
     ];

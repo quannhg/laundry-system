@@ -90,8 +90,44 @@ const getAll: Handler<GetAllOrderResultDto> = async (req, res) => {
     try {
         const orders = await prisma.order.findMany({
             where: { userId: req.userId },
+            select: {
+                id: true,
+                userId: true,
+                authCode: true,
+                price: true,
+                status: true,
+                washingMode: true,
+                isSoak: true,
+                paymentMethod: true,
+                createdAt: true,
+                updatedAt: true,
+                machine: {
+                    select: {
+                        id: true,
+                        machineNo: true,
+                        status: true,
+                    },
+                },
+            },
         });
-        res.status(200).send({ orders });
+
+        const responseOrder = orders.map((order) => {
+            return {
+                id: order.id,
+                userId: order.userId,
+                price: order.price,
+                status: order.status,
+                washingMode: order.washingMode,
+                isSoak: order.isSoak,
+                paymentMethod: order.paymentMethod,
+                createdAt: order.createdAt,
+                updatedAt: order.updatedAt,
+                machineId: order.machine.id,
+                washingStatus: order.machine.status,
+            };
+        });
+
+        res.status(200).send({ orders: responseOrder });
     } catch (error) {
         logger.error(`Error getting all orders: ${error}`);
         res.status(500).send({ error: 'Internal Server Error' });

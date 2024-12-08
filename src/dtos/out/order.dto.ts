@@ -18,6 +18,7 @@ export const GetAllOrderResultDto = Type.Object({
             price: Type.Number(),
             isSoak: Type.Boolean(),
             paymentMethod: Type.String(),
+            washingStatus: Type.String(),
         }),
     ),
 });

@@ -61,7 +61,8 @@ model Order {
 enum LaundryStatus {
   IDLE
   WASHING
-  DRYING
+  RINSING
+  SPINNING
   BROKEN
 }
 
