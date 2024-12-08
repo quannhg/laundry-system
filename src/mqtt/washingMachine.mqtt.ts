@@ -119,9 +119,10 @@ async function handleOrderWashing(machineId: string) {
             },
         });
 
-        if (orders.length !== 1) {
-            throw new Error(`Unexpected number of orders found: ${orders.length}`);
-        }
+        // TODO: correct logic assign washing machien for order
+        // if (orders.length !== 1) {
+        //     throw new Error(`Unexpected number of orders found: ${orders.length}`);
+        // }
 
         const orderToUpdate = orders[0];
         const updatedOrder = await prisma.order.update({
@@ -159,9 +160,10 @@ async function handleOrderCompletion(machineId: string) {
             },
         });
 
-        if (orders.length !== 1) {
-            throw new Error(`Unexpected number of orders found: ${orders.length}`);
-        }
+        // TODO: correct logic assign washing machien for order
+        // if (orders.length !== 1) {
+        //     throw new Error(`Unexpected number of orders found: ${orders.length}`);
+        // }
 
         const orderToUpdate = orders[0];
         const updatedOrder = await prisma.order.update({
