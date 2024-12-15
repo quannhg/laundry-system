@@ -2,7 +2,20 @@ import { Static, Type } from '@sinclair/typebox';
 
 // create
 export const CreateOrderResultDto = Type.Object({
+    id: Type.String(),
+    userId: Type.String(),
     status: Type.String(),
+    price: Type.Number(),
+    isSoak: Type.Boolean(),
+    paymentMethod: Type.String(),
+    washingStatus: Type.String(),
+    authCode: Type.String(),
+    createAt: Type.String(),
+    washingAt: Type.Union([Type.String(), Type.Null()]),
+    finishedAt: Type.Union([Type.String(), Type.Null()]),
+    machineId: Type.String(),
+    machineNo: Type.String(),
+    washingMode: Type.String(),
 });
 export type CreateOrderResultDto = Static<typeof CreateOrderResultDto>;
 
@@ -12,14 +25,18 @@ export const GetAllOrderResultDto = Type.Object({
         Type.Object({
             id: Type.String(),
             userId: Type.String(),
-            machineId: Type.String(),
-            washingMode: Type.String(),
             status: Type.String(),
             price: Type.Number(),
             isSoak: Type.Boolean(),
             paymentMethod: Type.String(),
             washingStatus: Type.String(),
             authCode: Type.String(),
+            createAt: Type.String(),
+            washingAt: Type.Union([Type.String(), Type.Null()]),
+            finishedAt: Type.Union([Type.String(), Type.Null()]),
+            machineId: Type.String(),
+            machineNo: Type.String(),
+            washingMode: Type.String(),
         }),
     ),
 });

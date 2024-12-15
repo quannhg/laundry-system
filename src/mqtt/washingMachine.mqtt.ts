@@ -155,6 +155,7 @@ async function handleOrderWashing(machineId: string) {
             },
             data: {
                 status: OrderStatus.WASHING,
+                washingAt: new Date(),
             },
             select: {
                 id: true,
@@ -195,6 +196,7 @@ async function handleOrderCompletion(machineId: string) {
             },
             data: {
                 status: OrderStatus.FINISHED,
+                finishedAt: new Date(),
             },
             select: {
                 id: true,
@@ -243,6 +245,7 @@ async function handleOrderCancel(machineId: string) {
             where: {
                 machineId: machineId,
                 status: OrderStatus.PENDING,
+                finishedAt: new Date(),
             },
         });
 

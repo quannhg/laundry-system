@@ -52,6 +52,7 @@ const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = asy
             },
             select: {
                 id: true,
+                userId: true,
                 authCode: true,
                 price: true,
                 status: true,
@@ -60,10 +61,13 @@ const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = asy
                 paymentMethod: true,
                 createdAt: true,
                 updatedAt: true,
+                washingAt: true,
+                finishedAt: true,
                 machine: {
                     select: {
                         id: true,
                         machineNo: true,
+                        status: true,
                     },
                 },
             },
@@ -80,7 +84,24 @@ const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = asy
         // Send notification about the order creation
         await sendCreatingNotification(req.userId, order);
 
-        res.status(201).send(order);
+        const responseOrder = {
+            id: order.id,
+            userId: order.userId,
+            authCode: order.authCode,
+            price: order.price,
+            status: order.status,
+            washingMode: order.washingMode,
+            isSoak: order.isSoak,
+            paymentMethod: order.paymentMethod,
+            createAt: order.createdAt.toISOString(),
+            washingAt: order.washingAt?.toISOString() ?? null,
+            finishedAt: order.finishedAt?.toISOString() ?? null,
+            machineId: order.machine.id,
+            machineNo: order.machine.machineNo,
+            washingStatus: order.machine.status,
+        };
+
+        res.status(201).send(responseOrder);
     } catch (error) {
         logger.error(`Error creating order: ${error}`);
         res.status(500).send({ error: 'Internal Server Error' });
@@ -101,6 +122,8 @@ const getAll: Handler<GetAllOrderResultDto> = async (req, res) => {
                 paymentMethod: true,
                 createdAt: true,
                 updatedAt: true,
+                washingAt: true,
+                finishedAt: true,
                 machine: {
                     select: {
                         id: true,
@@ -121,9 +144,11 @@ const getAll: Handler<GetAllOrderResultDto> = async (req, res) => {
                 washingMode: order.washingMode,
                 isSoak: order.isSoak,
                 paymentMethod: order.paymentMethod,
-                createdAt: order.createdAt,
-                updatedAt: order.updatedAt,
+                createAt: order.createdAt.toISOString(),
+                washingAt: order.washingAt?.toISOString() ?? null,
+                finishedAt: order.finishedAt?.toISOString() ?? null,
                 machineId: order.machine.id,
+                machineNo: order.machine.machineNo,
                 washingStatus: order.machine.status,
             };
         });

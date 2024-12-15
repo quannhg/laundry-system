@@ -56,10 +56,13 @@ model Order {
   authCode String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  finishedAt DateTime?
+  washingAt  DateTime?
 }
 
 enum LaundryStatus {
   IDLE
+  WAITING
   WASHING
   RINSING
   SPINNING
