@@ -245,7 +245,6 @@ async function handleOrderCancel(machineId: string) {
             where: {
                 machineId: machineId,
                 status: OrderStatus.PENDING,
-                finishedAt: new Date(),
             },
         });
 
