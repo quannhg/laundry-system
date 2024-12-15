@@ -115,6 +115,7 @@ const getAll: Handler<GetAllOrderResultDto> = async (req, res) => {
             return {
                 id: order.id,
                 userId: order.userId,
+                authCode: order.authCode,
                 price: order.price,
                 status: order.status,
                 washingMode: order.washingMode,
