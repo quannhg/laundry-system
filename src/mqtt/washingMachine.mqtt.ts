@@ -75,6 +75,25 @@ export async function updateWashingStatus(client: MqttClient, machine: MqttMessa
     const machineData = machine as { id: string; status: LaundryStatus };
     try {
         // Update washing machine status in the database
+        const currentMachineStatus = await prisma.washingMachine.findFirst({
+            where: {
+                id: machineData.id,
+            },
+        });
+
+        if (!currentMachineStatus) {
+            logger.error(`Machine with id ${machineData.id} not found`);
+            publishMqttMessage(client, {
+                type: MESSAGE_TYPE.UPDATE_MACHINE_STATUS,
+                payload: {
+                    status: 'error',
+                    id: machineData.id,
+                    message: `Machine with id ${machineData.id} not found`,
+                },
+            });
+            return;
+        }
+
         await prisma.washingMachine.update({
             where: {
                 id: machineData.id,
@@ -84,23 +103,29 @@ export async function updateWashingStatus(client: MqttClient, machine: MqttMessa
             },
         });
 
-        if (machineData.status === LaundryStatus.WASHING) {
-            // Handle order completion
-            await handleOrderWashing(machineData.id);
-        } else if (machineData.status === LaundryStatus.IDLE) {
-            // Handle order completion
-            const completedOrder = await handleOrderCompletion(machineData.id);
-            if (completedOrder) {
-                // Send completion notification
-                await sendCompletionNotification(completedOrder.userId, completedOrder);
-            }
-        }
-
-        // Publish status update to the hardware via MQTT
         publishMqttMessage(client, {
             type: MESSAGE_TYPE.UPDATE_MACHINE_STATUS,
             payload: { status: 'success', id: machineData.id },
         });
+
+        if (machineData.status === LaundryStatus.WASHING) {
+            await handleOrderWashing(machineData.id);
+        }
+
+        if (machineData.status === LaundryStatus.IDLE) {
+            if ([LaundryStatus.WASHING, LaundryStatus.RINSING, LaundryStatus.SPINNING].includes(currentMachineStatus.status as string)) {
+                const completedOrder = await handleOrderCompletion(machineData.id);
+                if (completedOrder) {
+                    await sendCompletionNotification(completedOrder.userId, completedOrder);
+                }
+            }
+            if (currentMachineStatus.status === LaundryStatus.WAITING) {
+                const cancelOrder = await handleOrderCancel(machineData.id);
+                if (cancelOrder) {
+                    await sendCancelNotification(cancelOrder.userId);
+                }
+            }
+        }
     } catch (error) {
         logger.error(`Error updating washing status: ${error}`);
         publishMqttMessage(client, {
@@ -119,10 +144,9 @@ async function handleOrderWashing(machineId: string) {
             },
         });
 
-        // TODO: correct logic assign washing machien for order
-        // if (orders.length !== 1) {
-        //     throw new Error(`Unexpected number of orders found: ${orders.length}`);
-        // }
+        if (orders.length !== 1) {
+            logger.warn(`Expected exactly one pending order for machine ${machineId}, but found ${orders.length} pending orders.`);
+        }
 
         const orderToUpdate = orders[0];
         const updatedOrder = await prisma.order.update({
@@ -160,10 +184,9 @@ async function handleOrderCompletion(machineId: string) {
             },
         });
 
-        // TODO: correct logic assign washing machien for order
-        // if (orders.length !== 1) {
-        //     throw new Error(`Unexpected number of orders found: ${orders.length}`);
-        // }
+        if (orders.length !== 1) {
+            logger.warn(`Expected exactly one washing order for machine ${machineId}, but found ${orders.length} pending orders.`);
+        }
 
         const orderToUpdate = orders[0];
         const updatedOrder = await prisma.order.update({
@@ -187,7 +210,7 @@ async function handleOrderCompletion(machineId: string) {
 
         return updatedOrder;
     } catch (error) {
-        logger.error('Error updating order status:', error);
+        logger.error(`Error updating order status: ${error}`);
         throw new Error('Order update failed');
     }
 }
@@ -205,6 +228,61 @@ async function sendCompletionNotification(userId: string, order: any) {
                 status: OrderStatus.FINISHED,
                 time: new Date().toISOString(),
                 machineNumber: order.machine.machineNo.toString(),
+            },
+        };
+
+        await pushNotification(userId, message);
+    } catch (error) {
+        logger.error(`Error sending notification: ${error}`);
+    }
+}
+
+async function handleOrderCancel(machineId: string) {
+    try {
+        const orders = await prisma.order.findMany({
+            where: {
+                machineId: machineId,
+                status: OrderStatus.PENDING,
+            },
+        });
+
+        if (orders.length !== 1) {
+            logger.warn(`Expected exactly one pending order for machine ${machineId}, but found ${orders.length} pending orders.`);
+        }
+
+        const orderToUpdate = orders[0];
+        const updatedOrder = await prisma.order.update({
+            where: {
+                id: orderToUpdate.id,
+            },
+            data: {
+                status: OrderStatus.CANCELLED,
+            },
+            select: {
+                id: true,
+                userId: true,
+                status: true,
+                machine: {
+                    select: {
+                        machineNo: true,
+                    },
+                },
+            },
+        });
+
+        return updatedOrder;
+    } catch (error) {
+        logger.error(`Error updating order status: ${error}`);
+        throw new Error('Order update failed');
+    }
+}
+
+async function sendCancelNotification(userId: string) {
+    try {
+        const message = {
+            notification: {
+                title: `Order cancelled`,
+                body: 'Your order was cancelled due to exceeding the waiting time. Please place a new order if you wish to continue using the service.',
             },
         };
 
