@@ -12,16 +12,16 @@ datasource db {
 }
 
 model User {
-  id          String  @id @default(cuid())
-  email       String? @unique @db.VarChar(50)
-  name String?
-  username    String? @unique @db.VarChar(50)
-  password    String?
-  avatarUrl   String?
-  phoneNumber String?
+  id                 String  @id @default(cuid())
+  email              String? @unique @db.VarChar(50)
+  name               String?
+  username           String? @unique @db.VarChar(50)
+  password           String?
+  avatarUrl          String?
+  phoneNumber        String?
   enableNotification Boolean @default(true)
 
-  orders Order[]
+  orders   Order[]
   FCMToken FCMToken[]
 }
 
@@ -35,8 +35,8 @@ model FCMToken {
 }
 
 model WashingMachine {
-  id     String       @id @default(cuid())
-  status LaundryStatus
+  id        String        @id @default(cuid())
+  status    LaundryStatus
   machineNo Int
 
   orders Order[]
@@ -53,11 +53,12 @@ model Order {
   isSoak        Boolean?       @default(false)
   paymentMethod String?
   price         Int?
-  authCode String?
+  authCode      String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  finishedAt DateTime?
-  washingAt  DateTime?
+  finishedAt    DateTime?
+  cancelledAt   DateTime?
+  washingAt     DateTime?
 }
 
 enum LaundryStatus {

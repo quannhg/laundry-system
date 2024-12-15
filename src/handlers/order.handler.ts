@@ -96,6 +96,7 @@ const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = asy
             createAt: order.createdAt.toISOString(),
             washingAt: order.washingAt?.toISOString() ?? null,
             finishedAt: order.finishedAt?.toISOString() ?? null,
+            cancelledAt: null,
             machineId: order.machine.id,
             machineNo: order.machine.machineNo,
             washingStatus: order.machine.status,
@@ -123,6 +124,7 @@ const getAll: Handler<GetAllOrderResultDto> = async (req, res) => {
                 createdAt: true,
                 updatedAt: true,
                 washingAt: true,
+                cancelledAt: true,
                 finishedAt: true,
                 machine: {
                     select: {
@@ -147,6 +149,7 @@ const getAll: Handler<GetAllOrderResultDto> = async (req, res) => {
                 createAt: order.createdAt.toISOString(),
                 washingAt: order.washingAt?.toISOString() ?? null,
                 finishedAt: order.finishedAt?.toISOString() ?? null,
+                cancelledAt: order.cancelledAt?.toISOString() ?? null,
                 machineId: order.machine.id,
                 machineNo: order.machine.machineNo,
                 washingStatus: order.machine.status,
@@ -191,6 +194,7 @@ const updateStatus: Handler<UpdateStatusOrderResultDto, { Body: UpdateStatusOrde
             },
             data: {
                 status: orderStatusDb,
+                cancelledAt: orderStatusDb === OrderStatus.CANCELLED ? new Date() : undefined,
             },
         });
 

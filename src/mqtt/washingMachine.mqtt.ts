@@ -259,7 +259,7 @@ async function handleOrderCancel(machineId: string) {
             },
             data: {
                 status: OrderStatus.CANCELLED,
-                finishedAt: new Date(),
+                cancelledAt: new Date(),
             },
             select: {
                 id: true,
