@@ -134,6 +134,9 @@ const getAll: Handler<GetAllOrderResultDto> = async (req, res) => {
                     },
                 },
             },
+            orderBy: {
+                updatedAt: 'desc',
+            },
         });
 
         const responseOrder = orders.map((order) => {
