@@ -228,8 +228,33 @@ async function sendCreatingNotification(userId: string, order: any) {
     }
 }
 
+const remove: Handler<{ success: boolean }, { Params: { id: string } }> = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.order.delete({
+            where: { id: id },
+        });
+        res.status(200).send({ success: true });
+    } catch (error) {
+        logger.error(`Error removing order: ${error}`);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+};
+
+const removeAll: Handler<{ success: boolean }> = async (_req, res) => {
+    try {
+        await prisma.order.deleteMany({});
+        res.status(200).send({ success: true });
+    } catch (error) {
+        logger.error(`Error removing order: ${error}`);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+};
+
 export const ordersHandle = {
     create,
     getAll,
     updateStatus,
+    remove,
+    removeAll,
 };

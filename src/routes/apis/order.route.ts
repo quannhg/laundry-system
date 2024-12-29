@@ -39,4 +39,27 @@ export const orderPlugin = createRoutes('Order', [
         },
         handler: ordersHandle.updateStatus,
     },
+    {
+        method: 'DELETE',
+        url: '/:id',
+        schema: {
+            params: { id: { type: 'string' } },
+            response: {
+                200: { success: { type: 'boolean' } },
+            },
+            security: [{ bearerAuth: [] }],
+        },
+        handler: ordersHandle.remove,
+    },
+    {
+        method: 'DELETE',
+        url: '',
+        schema: {
+            response: {
+                200: { success: { type: 'boolean' } },
+            },
+            security: [{ bearerAuth: [] }],
+        },
+        handler: ordersHandle.removeAll,
+    },
 ]);
