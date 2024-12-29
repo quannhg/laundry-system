@@ -7,3 +7,11 @@ export const WashingMachineDto = Type.Object({
 });
 
 export type WashingMachineDto = Static<typeof WashingMachineDto>;
+
+export const CreatingWashingMachineResultDto = Type.Object({
+    id: Type.String(),
+    status: Type.String(),
+    machineNo: Type.Number(),
+});
+
+export type CreatingWashingMachineResultDto = Static<typeof CreatingWashingMachineResultDto>;

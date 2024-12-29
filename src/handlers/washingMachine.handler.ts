@@ -1,6 +1,8 @@
 import { prisma } from '@repositories';
 import { Handler } from '@interfaces';
-import { WashingMachineDto } from '@dtos/out';
+import { CreatingWashingMachineResultDto, WashingMachineDto } from '@dtos/out';
+import { LaundryStatus } from '@prisma/client';
+import { CreatingWashingMachineInputDto } from '@dtos/in';
 
 const fetchWashingMachines: Handler<WashingMachineDto> = async (_req, res) => {
     try {
@@ -23,6 +25,34 @@ const fetchWashingMachines: Handler<WashingMachineDto> = async (_req, res) => {
     }
 };
 
+const addWashingMachine: Handler<
+    CreatingWashingMachineResultDto,
+    {
+        Body: CreatingWashingMachineInputDto;
+    }
+> = async (req, res) => {
+    try {
+        const { machineNo } = req.body;
+        const newMachine = await prisma.washingMachine.create({
+            data: { machineNo, status: LaundryStatus.IDLE },
+        });
+        return res.send(newMachine);
+    } catch (error) {
+        return res.internalServerError(error);
+    }
+};
+
+const removeAllWashingMachines: Handler<{ success: boolean }> = async (_req, res) => {
+    try {
+        await prisma.washingMachine.deleteMany({});
+        return res.send();
+    } catch (error) {
+        return res.internalServerError(error);
+    }
+};
+
 export const washingMachineHandler = {
     fetchWashingMachines,
+    addWashingMachine,
+    removeAllWashingMachines,
 };
