@@ -14,7 +14,17 @@ export function createServer(config: ServerConfig): FastifyInstance {
     const app = fastify({ logger });
 
     app.register(import('@fastify/sensible'));
-    app.register(import('@fastify/helmet'));
+
+    // Modified Helmet configuration with CSP settings
+    app.register(import('@fastify/helmet'), {
+        contentSecurityPolicy: {
+            directives: {
+                scriptSrc: ["'self'", "'unsafe-eval'"],
+                // Other directives will use helmet defaults
+            }
+        }
+    });
+
     app.register(import('@fastify/cors'), {
         // origin: envs.CORS_WHITE_LIST
         origin: true,
