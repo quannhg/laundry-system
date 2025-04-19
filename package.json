@@ -22,8 +22,8 @@
     "lint": "eslint '**/*.{ts,js}'",
     "lint:fix": "eslint '**/*.{ts,js}' --fix",
     "format": "prettier '**/*.{ts,js,json}' --write",
-    "start:docker": "docker-compose -f docker-compose.dev.yml up -d",
-    "clean:docker": "docker-compose -f docker-compose.dev.yml down --volumes --remove-orphans",
+    "start:docker": "docker compose -f docker-compose.dev.yml up -d",
+    "clean:docker": "docker compose -f docker-compose.dev.yml down --volumes --remove-orphans",
     "clean:git": "git branch --merged >/tmp/merged-branches && nano /tmp/merged-branches && xargs git branch -D </tmp/merged-branches && git fetch --prune --all"
   },
   "dependencies": {
@@ -33,9 +33,12 @@
     "@fastify/sensible": "^5.5.0",
     "@fastify/swagger": "^8.13.0",
     "@fastify/swagger-ui": "^2.0.1",
+    "@latitude-data/sdk": "^3.0.2",
     "@prisma/client": "^5.7.1",
     "@sinclair/typebox": "^0.32.5",
+    "axios": "^1.8.4",
     "bcrypt": "^5.1.1",
+    "date-fns": "^4.1.0",
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
     "envalid": "^8.0.0",

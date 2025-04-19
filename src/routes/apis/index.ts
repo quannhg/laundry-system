@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { userPlugin } from './user.route';
 import { washingMachinePlugin } from './washingMachine.route';
 import { orderPlugin } from './order.route';
+import { insightRoutes } from './insight.route'; // Import the new insight routes
 import { verifyToken } from '@hooks';
 
 export async function apiPlugin(app: FastifyInstance) {
@@ -12,4 +13,5 @@ export async function apiPlugin(app: FastifyInstance) {
     app.register(userPlugin, { prefix: '/user' });
     app.register(washingMachinePlugin, { prefix: '/washing-machine' });
     app.register(orderPlugin, { prefix: '/order' });
+    app.register(insightRoutes, { prefix: '/insight' }); // Register the insight routes
 }

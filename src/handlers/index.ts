@@ -3,6 +3,7 @@
  */
 
 export * from './error.handler';
+export * from './insight.handler';
 export * from './order.handler';
 export * from './user.handler';
 export * from './washingMachine.handler';
