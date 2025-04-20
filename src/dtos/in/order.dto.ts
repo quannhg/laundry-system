@@ -14,3 +14,13 @@ export const UpdateStatusOrderInputDto = Type.Object({
     status: Type.String(),
 });
 export type UpdateStatusOrderInputDto = Static<typeof UpdateStatusOrderInputDto>;
+
+// searchOrders
+export const SearchOrdersInputDto = Type.Object({
+    customerName: Type.Optional(Type.String()),
+    orderCode: Type.Optional(Type.String()),
+    status: Type.Optional(Type.String()),
+    page: Type.Optional(Type.Number()),
+    limit: Type.Optional(Type.Number()),
+});
+export type SearchOrdersInputDto = Static<typeof SearchOrdersInputDto>;

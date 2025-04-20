@@ -1,8 +1,8 @@
 import { prisma } from '@repositories';
 import { Handler } from '@interfaces';
 import { logger } from '@utils';
-import { CreateOrderInputDto, UpdateStatusOrderInputDto } from '@dtos/in';
-import { CreateOrderResultDto, GetAllOrderResultDto, UpdateStatusOrderResultDto } from '@dtos/out';
+import { CreateOrderInputDto, SearchOrdersInputDto, UpdateStatusOrderInputDto } from '@dtos/in';
+import { CreateOrderResultDto, GetAllOrderResultDto, SearchOrdersResultDto, UpdateStatusOrderResultDto } from '@dtos/out';
 import { WashingMode, OrderStatus } from '@prisma/client';
 import { MESSAGE_TYPE, MQTT_TO_HARDWARE_TOPIC, PaymentMethod, SoakPrice, WashingPrice } from '@constants';
 import { pushNotification } from '@utils';
@@ -254,10 +254,129 @@ const removeAll: Handler<{ success: boolean }> = async (_req, res) => {
     }
 };
 
+// New search function
+const searchOrders: Handler<SearchOrdersResultDto, { Querystring: SearchOrdersInputDto }> = async (req, res) => {
+    try {
+        const { customerName, orderCode, status, page = 1, limit = 10 } = req.query;
+        
+        // Build the where clause based on filter parameters
+        const where: any = {};
+        
+        // Filter by customer name if provided
+        if (customerName) {
+            where.user = {
+                name: {
+                    contains: customerName,
+                    mode: 'insensitive', // Case-insensitive search
+                },
+            };
+        }
+        
+        // Filter by order code (auth code)
+        if (orderCode) {
+            where.authCode = {
+                contains: orderCode,
+                mode: 'insensitive',
+            };
+        }
+        
+        // Filter by status
+        if (status) {
+            where.status = status.toUpperCase();
+        }
+        
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+        
+        // Get total count of matching orders
+        const totalOrders = await prisma.order.count({ where });
+        
+        // Get orders with filtering and pagination
+        const orders = await prisma.order.findMany({
+            where,
+            select: {
+                id: true,
+                userId: true,
+                authCode: true,
+                price: true,
+                status: true,
+                washingMode: true,
+                isSoak: true,
+                paymentMethod: true,
+                createdAt: true,
+                updatedAt: true,
+                washingAt: true,
+                cancelledAt: true,
+                finishedAt: true,
+                machine: {
+                    select: {
+                        id: true,
+                        machineNo: true,
+                        status: true,
+                    },
+                },
+                user: {
+                    select: {
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+            orderBy: {
+                updatedAt: 'desc',
+            },
+            skip,
+            take: limit,
+        });
+        
+        // Format orders for response
+        const formattedOrders = orders.map((order) => {
+            return {
+                id: order.id,
+                userId: order.userId,
+                authCode: order.authCode,
+                price: order.price,
+                status: order.status,
+                washingMode: order.washingMode,
+                isSoak: order.isSoak,
+                paymentMethod: order.paymentMethod,
+                createAt: order.createdAt.toISOString(),
+                washingAt: order.washingAt?.toISOString() ?? null,
+                finishedAt: order.finishedAt?.toISOString() ?? null,
+                cancelledAt: order.cancelledAt?.toISOString() ?? null,
+                machineId: order.machine.id,
+                machineNo: order.machine.machineNo,
+                washingStatus: order.machine.status,
+                user: {
+                    name: order.user?.name ?? null,
+                    email: order.user?.email ?? null,
+                },
+            };
+        });
+        
+        // Calculate total pages
+        const totalPages = Math.ceil(totalOrders / limit);
+        
+        res.status(200).send({
+            orders: formattedOrders,
+            pagination: {
+                total: totalOrders,
+                page,
+                limit,
+                totalPages,
+            },
+        });
+    } catch (error) {
+        logger.error(`Error searching orders: ${error}`);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+};
+
 export const ordersHandle = {
     create,
     getAll,
     updateStatus,
     remove,
     removeAll,
+    searchOrders,
 };
