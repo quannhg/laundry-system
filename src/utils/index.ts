@@ -4,5 +4,6 @@
 
 export * from './createRoutes';
 export * from './logger';
+export * from './powerUsageChart';
 export * from './publishMqttMessage';
 export * from './pushNotification';
