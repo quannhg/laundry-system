@@ -5,6 +5,7 @@ import { envs } from '../configs';
 import { subWeeks, startOfWeek } from 'date-fns';
 // Import correct models and enums from Prisma
 import { Order, WashingMachine, PowerUsageData, OrderStatus, LaundryStatus, WashingMode } from '@prisma/client';
+import { prisma } from '../repositories'; // Import Prisma client
 
 // Define more specific types for Latitude input
 interface LatitudePowerUsageInput {
@@ -34,115 +35,63 @@ interface LatitudeInput {
     machines: LatitudeMachineInput[];
 }
 
-// --- Mock Data --- START
-// Use Prisma types directly where possible, adjust for differences like price type
-interface MockPowerUsageData extends Omit<PowerUsageData, 'order' | 'machine'> {}
-
-interface MockOrder extends Omit<Order, 'price' | 'user' | 'machine' | 'powerUsage'> {
-    price: number | null;
-    powerUsage: MockPowerUsageData | null; // Added mock power usage
-}
-
-interface MockMachine extends WashingMachine {}
-
-const generateMockPowerUsageData = (orderId: string, machineId: string, recordedAt: Date): MockPowerUsageData => ({
-    id: `power-${orderId}`,
-    orderId: orderId,
-    machineId: machineId,
-    totalKwh: parseFloat((Math.random() * 1.5).toFixed(2)), // Mock kWh between 0 and 1.5
-    recordedAt: recordedAt,
-});
-
-const generateMockOrders = (count: number, startDate: Date): MockOrder[] => {
-    const orders: MockOrder[] = [];
-    const machineIds = ['machine-1', 'machine-2', 'machine-3'];
-    const statuses = Object.values(OrderStatus);
-    const modes = Object.values(WashingMode);
-    let currentDate = new Date(startDate);
-
-    for (let i = 0; i < count; i++) {
-        currentDate.setHours(currentDate.getHours() + Math.random() * 5);
-        if (currentDate > new Date()) currentDate = new Date(startDate);
-
-        const orderId = `order-${i}`;
-        const machineId = machineIds[i % machineIds.length];
-        const hasPowerData = i % 2 === 0 && statuses[i % statuses.length] === OrderStatus.FINISHED; // Only add power data for some finished orders
-
-        orders.push({
-            id: orderId,
-            userId: `user-${i % 10}`,
-            machineId: machineId,
-            status: statuses[i % statuses.length],
-            washingMode: modes[i % modes.length],
-            isSoak: i % 3 === 0 ? true : null,
-            paymentMethod: i % 2 === 0 ? 'CASH' : 'WALLET',
-            price: i % 5 === 0 ? null : Math.floor(Math.random() * 10) + 1,
-            authCode: i % 10 === 0 ? `AUTH${i}` : null,
-            createdAt: new Date(currentDate),
-            updatedAt: new Date(currentDate),
-            washingAt: i % 2 === 0 ? new Date(currentDate) : null,
-            finishedAt: i % 4 === 0 ? new Date(currentDate) : null,
-            cancelledAt: i % 10 === 0 ? new Date(currentDate) : null,
-            powerUsage: hasPowerData ? generateMockPowerUsageData(orderId, machineId, new Date(currentDate)) : null,
-        });
-    }
-    return orders;
-};
-
-const generateMockMachines = (count: number): MockMachine[] => {
-    const machines: MockMachine[] = [];
-    const statuses = Object.values(LaundryStatus); // Use correct enum
-    for (let i = 0; i < count; i++) {
-        machines.push({
-            id: `machine-${i + 1}`,
-            status: statuses[i % statuses.length],
-            machineNo: i + 1, // Added based on schema
-            // Add other fields if needed, ensure they match WashingMachine model
-        });
-    }
-    return machines;
-};
-// --- Mock Data --- END
+// Removed mock data generation functions (lines 38-106)
 
 export const getInsightsHandler = async (_request: FastifyRequest, reply: FastifyReply) => {
-    try {
-        logger.info('Starting insight generation process using MOCK DATA (schema corrected + power usage)');
+    // Define the type for orders fetched with powerUsage included
+    type OrderWithPowerUsage = Order & {
+        powerUsage: PowerUsageData | null;
+    };
 
-        // 1. Fetch Data (Mocked)
+    try {
+        logger.info('Starting insight generation process using REAL DATA');
+
+        // 1. Fetch Data
         const now = new Date();
         const eightWeeksAgo = startOfWeek(subWeeks(now, 7), { weekStartsOn: 1 });
 
-        // Use mock data instead of Prisma calls
-        const machines = generateMockMachines(3);
-        const orders = generateMockOrders(100, eightWeeksAgo);
+        // Fetch real data using Prisma client
+        const machines: WashingMachine[] = await prisma.washingMachine.findMany();
+        const orders: OrderWithPowerUsage[] = await prisma.order.findMany({
+            where: {
+                createdAt: {
+                    gte: eightWeeksAgo,
+                },
+            },
+            include: {
+                powerUsage: true, // Include related power usage data
+            },
+        });
 
-        logger.info(`Using ${orders.length} mock orders and ${machines.length} mock machines`);
+        logger.info(`Fetched ${orders.length} orders and ${machines.length} machines from database`);
 
         // 2. Format Data for Latitude
         const latitudeInput: LatitudeInput = {
             orders: orders.map(
-                (order): LatitudeOrderInput => ({
+                (order: OrderWithPowerUsage): LatitudeOrderInput => ({
+                    // Explicitly type 'order'
                     id: order.id,
                     createdAt: order.createdAt,
                     status: order.status,
-                    price: order.price, // Use the potentially null price
-                    machineId: order.machineId, // Correct field name
+                    price: order.price, // Already a number or null
+                    machineId: order.machineId,
                     washingMode: order.washingMode,
                     isSoak: order.isSoak,
                     // Format power usage data if it exists
                     powerUsage: order.powerUsage
                         ? {
-                              totalKwh: order.powerUsage.totalKwh,
+                              totalKwh: order.powerUsage.totalKwh, // Already a number
                               recordedAt: order.powerUsage.recordedAt,
                           }
                         : null,
                 }),
             ),
             machines: machines.map(
-                (machine): LatitudeMachineInput => ({
+                (machine: WashingMachine): LatitudeMachineInput => ({
+                    // Explicitly type 'machine'
                     id: machine.id,
                     status: machine.status,
-                    machineNo: machine.machineNo, // Added field
+                    machineNo: machine.machineNo,
                 }),
             ),
         };
