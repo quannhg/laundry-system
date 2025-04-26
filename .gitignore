@@ -61,3 +61,4 @@ test/**/*.js.map
 
 # firebase
 firebaseServiceAccountKey*
+memory-bank

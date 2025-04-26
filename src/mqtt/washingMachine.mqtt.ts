@@ -119,12 +119,12 @@ export async function updateWashingStatus(client: MqttClient, machine: MqttMessa
                     await sendCompletionNotification(completedOrder.userId, completedOrder);
                 }
             }
-            // if (currentMachineStatus.status === LaundryStatus.WAITING) {
-            //     const cancelOrder = await handleOrderCancel(machineData.id);
-            //     if (cancelOrder) {
-            //         await sendCancelNotification(cancelOrder.userId);
-            //     }
-            // }
+            if (currentMachineStatus.status === LaundryStatus.WAITING) {
+                const cancelOrder = await handleOrderCancel(machineData.id);
+                if (cancelOrder) {
+                    await sendCancelNotification(cancelOrder.userId);
+                }
+            }
         }
     } catch (error) {
         logger.error(`Error updating washing status: ${error}`);
@@ -239,60 +239,58 @@ async function sendCompletionNotification(userId: string, order: any) {
     }
 }
 
-// // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// async function handleOrderCancel(machineId: string) {
-//     try {
-//         const orders = await prisma.order.findMany({
-//             where: {
-//                 machineId: machineId,
-//                 status: OrderStatus.PENDING,
-//             },
-//         });
-//
-//         if (orders.length !== 1) {
-//             logger.warn(`Expected exactly one pending order for machine ${machineId}, but found ${orders.length} pending orders.`);
-//         }
-//
-//         const orderToUpdate = orders[0];
-//         const updatedOrder = await prisma.order.update({
-//             where: {
-//                 id: orderToUpdate.id,
-//             },
-//             data: {
-//                 status: OrderStatus.CANCELLED,
-//                 cancelledAt: new Date(),
-//             },
-//             select: {
-//                 id: true,
-//                 userId: true,
-//                 status: true,
-//                 machine: {
-//                     select: {
-//                         machineNo: true,
-//                     },
-//                 },
-//             },
-//         });
-//
-//         return updatedOrder;
-//     } catch (error) {
-//         logger.error(`Error updating order status: ${error}`);
-//         throw new Error('Order update failed');
-//     }
-// }
-//
-// // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// async function sendCancelNotification(userId: string) {
-//     try {
-//         const message = {
-//             notification: {
-//                 title: `Order cancelled`,
-//                 body: 'Your order was cancelled due to exceeding the waiting time. Please place a new order if you wish to continue using the service.',
-//             },
-//         };
-//
-//         await pushNotification(userId, message);
-//     } catch (error) {
-//         logger.error(`Error sending notification: ${error}`);
-//     }
-// }
+async function handleOrderCancel(machineId: string) {
+    try {
+        const orders = await prisma.order.findMany({
+            where: {
+                machineId: machineId,
+                status: OrderStatus.PENDING,
+            },
+        });
+
+        if (orders.length !== 1) {
+            logger.warn(`Expected exactly one pending order for machine ${machineId}, but found ${orders.length} pending orders.`);
+        }
+
+        const orderToUpdate = orders[0];
+        const updatedOrder = await prisma.order.update({
+            where: {
+                id: orderToUpdate.id,
+            },
+            data: {
+                status: OrderStatus.CANCELLED,
+                cancelledAt: new Date(),
+            },
+            select: {
+                id: true,
+                userId: true,
+                status: true,
+                machine: {
+                    select: {
+                        machineNo: true,
+                    },
+                },
+            },
+        });
+
+        return updatedOrder;
+    } catch (error) {
+        logger.error(`Error updating order status: ${error}`);
+        throw new Error('Order update failed');
+    }
+}
+
+async function sendCancelNotification(userId: string) {
+    try {
+        const message = {
+            notification: {
+                title: `Order cancelled`,
+                body: 'Your order was cancelled due to exceeding the waiting time. Please place a new order if you wish to continue using the service.',
+            },
+        };
+
+        await pushNotification(userId, message);
+    } catch (error) {
+        logger.error(`Error sending notification: ${error}`);
+    }
+}
