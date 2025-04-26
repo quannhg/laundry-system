@@ -113,7 +113,8 @@ export async function updateWashingStatus(client: MqttClient, machine: MqttMessa
         }
 
         if (machineData.status === LaundryStatus.IDLE) {
-            if ([LaundryStatus.WASHING, LaundryStatus.RINSING, LaundryStatus.SPINNING].includes(currentMachineStatus.status as string)) {
+            const washingPhases = [LaundryStatus.WASHING, LaundryStatus.RINSING, LaundryStatus.SPINNING];
+            if (washingPhases.some((phase) => phase === currentMachineStatus.status)) {
                 const completedOrder = await handleOrderCompletion(machineData.id);
                 if (completedOrder) {
                     await sendCompletionNotification(completedOrder.userId, completedOrder);
@@ -292,5 +293,56 @@ async function sendCancelNotification(userId: string) {
         await pushNotification(userId, message);
     } catch (error) {
         logger.error(`Error sending notification: ${error}`);
+    }
+}
+
+export async function updatePowerConsumption(client: MqttClient, data: MqttMessagePayload): Promise<void> {
+    const consumptionData = data as { id: string; consumption: number };
+    try {
+        // Find the latest finished order for this machine
+        const order = await prisma.order.findFirst({
+            where: {
+                machineId: consumptionData.id,
+                status: OrderStatus.FINISHED,
+                finishedAt: {
+                    not: null,
+                },
+            },
+            orderBy: {
+                finishedAt: 'desc',
+            },
+        });
+
+        if (!order) {
+            throw new Error(`No finished order found for machine ${consumptionData.id}`);
+        }
+
+        // Store power usage data
+        await prisma.powerUsageData.create({
+            data: {
+                orderId: order.id,
+                machineId: consumptionData.id,
+                totalKwh: consumptionData.consumption,
+            },
+        });
+
+        // Send success response
+        publishMqttMessage(client, {
+            type: MESSAGE_TYPE.POWER_CONSUMPTION_UPDATE,
+            payload: {
+                status: 'success',
+                id: consumptionData.id,
+            },
+        });
+    } catch (error) {
+        logger.error(`Error updating power consumption: ${error.message}`);
+        publishMqttMessage(client, {
+            type: MESSAGE_TYPE.POWER_CONSUMPTION_UPDATE,
+            payload: {
+                status: 'error',
+                id: consumptionData.id,
+                message: error.message,
+            },
+        });
     }
 }

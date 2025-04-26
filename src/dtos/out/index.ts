@@ -6,5 +6,6 @@ export * from './auth.dto';
 export * from './insight.dto';
 export * from './notification.dto';
 export * from './order.dto';
+export * from './power_usage.dto';
 export * from './user.dto';
 export * from './washing_machine.dto';
