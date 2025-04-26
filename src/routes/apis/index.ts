@@ -4,6 +4,7 @@ import { washingMachinePlugin } from './washingMachine.route';
 import { orderPlugin } from './order.route';
 import { insightRoutes } from './insight.route';
 import { powerUsagePlugin } from './powerUsage.route';
+import { v2ApiPlugin } from './v2';
 import { verifyToken } from '@hooks';
 
 export async function apiPlugin(app: FastifyInstance) {
@@ -16,4 +17,5 @@ export async function apiPlugin(app: FastifyInstance) {
     app.register(orderPlugin, { prefix: '/order' });
     app.register(insightRoutes, { prefix: '/insight' });
     app.register(powerUsagePlugin, { prefix: '/power-usage' });
+    app.register(v2ApiPlugin, { prefix: '/v2' });
 }
