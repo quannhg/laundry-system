@@ -3,82 +3,70 @@ import { LaundryStatus, OrderStatus, PrismaClient, WashingMode } from '@prisma/c
 
 const prisma = new PrismaClient();
 const SALT_ROUNDS = 10;
+const NUMBER_OF_DAYS_TO_SEED = 365; // Seed data for the past year
+const ORDERS_PER_DAY_RANGE = { min: 8, max: 25 }; // Random number of orders per day
+const KWH_RANGES = {
+    [WashingMode.NORMAL]: { min: 0.4, max: 0.9 },
+    [WashingMode.THOROUGHLY]: { min: 0.8, max: 1.8 },
+};
+const WASH_DURATION_MINUTES = { min: 45, max: 75 }; // Duration of a wash cycle
+
+// --- Helper Functions ---
+
+function getRandomElement<T>(arr: T[]): T {
+    if (arr.length === 0) throw new Error('Cannot get random element from empty array');
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function getRandomInt(min: number, max: number): number {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function getRandomFloat(min: number, max: number, decimals: number = 2): number {
+    const str = (Math.random() * (max - min) + min).toFixed(decimals);
+    return parseFloat(str);
+}
+
+function getRandomDateInRange(start: Date, end: Date): Date {
+    return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+}
+
+function addMinutes(date: Date, minutes: number): Date {
+    return new Date(date.getTime() + minutes * 60000);
+}
+
+function generateRandomAuthCode(): string {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+// --- Data Generation Functions ---
 
 async function generateWashingMachines() {
-    const washingMachines = [
-        {
-            id: 'machine1',
-            status: LaundryStatus.IDLE,
-            machineNo: 1,
-        },
-        {
-            id: 'machine2',
-            status: LaundryStatus.WASHING,
-            machineNo: 2,
-        },
-        {
-            id: 'machine3',
-            status: LaundryStatus.RINSING,
-            machineNo: 3,
-        },
-        {
-            id: 'machine4',
-            status: LaundryStatus.WASHING,
-            machineNo: 4,
-        },
-        {
-            id: 'machine5',
-            status: LaundryStatus.IDLE,
-            machineNo: 5,
-        },
-        {
-            id: 'machine6',
-            status: LaundryStatus.IDLE,
-            machineNo: 6,
-        },
-        {
-            id: 'machine7',
-            status: LaundryStatus.IDLE,
-            machineNo: 7,
-        },
-        {
-            id: 'machine8',
-            status: LaundryStatus.IDLE,
-            machineNo: 8,
-        },
-        {
-            id: 'machine9',
-            status: LaundryStatus.WASHING,
-            machineNo: 9,
-        },
-        {
-            id: 'machine10',
-            status: LaundryStatus.WASHING,
-            machineNo: 10,
-        },
-        {
-            id: 'machine11',
-            status: LaundryStatus.RINSING,
-            machineNo: 11,
-        },
-        {
-            id: 'machine12',
-            status: LaundryStatus.SPINNING,
-            machineNo: 12,
-        },
-    ];
+    const machines = Array.from({ length: 12 }, (_, i) => ({
+        id: `machine${i + 1}`,
+        status: getRandomElement([
+            LaundryStatus.IDLE,
+            LaundryStatus.IDLE,
+            LaundryStatus.IDLE,
+            LaundryStatus.IDLE, // Higher chance of IDLE
+            LaundryStatus.WASHING,
+            LaundryStatus.WASHING,
+            LaundryStatus.RINSING,
+            LaundryStatus.SPINNING,
+            LaundryStatus.WAITING,
+            LaundryStatus.BROKEN, // Small chance of BROKEN
+        ]),
+        machineNo: i + 1,
+    }));
 
     await prisma.washingMachine.createMany({
-        data: washingMachines,
+        data: machines,
+        skipDuplicates: true, // Skip if IDs already exist (useful for re-running seed)
     });
-    const statusCounts = washingMachines.reduce(
-        (acc, machine) => {
-            acc[machine.status] = (acc[machine.status] || 0) + 1;
-            return acc;
-        },
-        {} as Record<LaundryStatus, number>,
-    );
-    console.log('Washing machines created:', statusCounts);
+    console.log(`${machines.length} washing machines ensured.`);
+    return machines.map((m) => m.id); // Return IDs
 }
 
 async function generateUsers() {
@@ -86,11 +74,11 @@ async function generateUsers() {
         {
             id: 'user1',
             name: 'Alex Smith',
-        username: 'admin@domain.com',
-        password: 'secret_password',
-        email: 'admin@domain.com',
-        avatarUrl: 'https://lh3.googleusercontent.com/a/ACg8ocIjkHVXfD15PLabkbAx1TlsWTsTf8sT_mXtwckwxcBV4UtMi4j_=s360-c-no',
-        phoneNumber: '0123456789',
+            username: 'admin@domain.com',
+            password: 'secret_password',
+            email: 'admin@domain.com',
+            avatarUrl: 'https://lh3.googleusercontent.com/a/ACg8ocIjkHVXfD15PLabkbAx1TlsWTsTf8sT_mXtwckwxcBV4UtMi4j_=s360-c-no',
+            phoneNumber: '0123456789',
         },
         {
             id: 'user2',
@@ -128,278 +116,196 @@ async function generateUsers() {
             avatarUrl: 'https://ui-avatars.com/api/?name=Tran+Thi+B',
             phoneNumber: '0987123456',
         },
+        // Add more users if needed
     ];
 
-    for (const user of users) {
-    const hashPassword = hashSync(user.password, SALT_ROUNDS);
-        await prisma.user.create({
-        data: {
-                id: user.id,
-            username: user.username,
-            name: user.name,
-            password: hashPassword,
-            email: user.email,
-            avatarUrl: user.avatarUrl,
-            phoneNumber: user.phoneNumber,
-        },
+    const userData = users.map((user) => ({
+        ...user,
+        password: hashSync(user.password, SALT_ROUNDS),
+    }));
+
+    await prisma.user.createMany({
+        data: userData,
+        skipDuplicates: true, // Skip if IDs/usernames already exist
     });
-    }
-    console.log(`${users.length} users created`);
+    console.log(`${users.length} users ensured.`);
+    return users.map((u) => u.id); // Return IDs
 }
 
-async function generateOrders() {
+async function generateOrders(userIds: string[], machineIds: string[]) {
+    const allOrdersData = [];
+    const today = new Date();
     const paymentMethods = ['Credit Card', 'Cash', 'Mobile Banking'];
-    const orderData = [
-        {
-            userId: 'user1',
-            machineId: 'machine1',
-            status: OrderStatus.PENDING,
-            washingMode: WashingMode.NORMAL,
-            isSoak: false,
-            paymentMethod: paymentMethods[0],
-            price: 25000,
-            authCode: '123456',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
-        },
-        {
-            userId: 'user1',
-            machineId: 'machine5',
-            status: OrderStatus.WASHING,
-            washingMode: WashingMode.THOROUGHLY,
-            isSoak: true,
-            paymentMethod: paymentMethods[0],
-            price: 35000,
-            authCode: '234567',
-            createdAt: new Date(Date.now() - 1000 * 60 * 120), // 2 hours ago
-            washingAt: new Date(Date.now() - 1000 * 60 * 90), // 1.5 hours ago
-        },
-        {
-            userId: 'user1',
-            machineId: 'machine6',
-            status: OrderStatus.FINISHED,
-            washingMode: WashingMode.NORMAL,
-            isSoak: false,
-            paymentMethod: paymentMethods[1],
-            price: 25000,
-            authCode: '345678',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-            washingAt: new Date(Date.now() - 1000 * 60 * 60 * 23), // 23 hours ago
-            finishedAt: new Date(Date.now() - 1000 * 60 * 60 * 22), // 22 hours ago
-        },
-        {
-            userId: 'user2',
-            machineId: 'machine2',
-            status: OrderStatus.WASHING,
-            washingMode: WashingMode.THOROUGHLY,
-            isSoak: true,
-            paymentMethod: paymentMethods[2],
-            price: 35000,
-            authCode: '456789',
-            createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
-            washingAt: new Date(Date.now() - 1000 * 60 * 20), // 20 mins ago
-        },
-        {
-            userId: 'user2',
-            machineId: 'machine7',
-            status: OrderStatus.CONFIRMED,
-            washingMode: WashingMode.NORMAL,
-            isSoak: false,
-            paymentMethod: paymentMethods[0],
-            price: 25000,
-            authCode: '567890',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48), // 2 days ago
-            washingAt: new Date(Date.now() - 1000 * 60 * 60 * 47), // 47 hours ago
-            finishedAt: new Date(Date.now() - 1000 * 60 * 60 * 46), // 46 hours ago
-        },
-        {
-            userId: 'user3',
-            machineId: 'machine8',
-            status: OrderStatus.CANCELLED,
-            washingMode: WashingMode.THOROUGHLY,
-            isSoak: true,
-            paymentMethod: paymentMethods[1],
-            price: 35000,
-            authCode: '678901',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3), // 3 hours ago
-            cancelledAt: new Date(Date.now() - 1000 * 60 * 60 * 2.8), // 2.8 hours ago
-        },
-        {
-            userId: 'user3',
-            machineId: 'machine9',
-            status: OrderStatus.WASHING,
-            washingMode: WashingMode.NORMAL,
-            isSoak: false,
-            paymentMethod: paymentMethods[2],
-            price: 25000,
-            authCode: '789012',
-            createdAt: new Date(Date.now() - 1000 * 60 * 15), // 15 mins ago
-            washingAt: new Date(Date.now() - 1000 * 60 * 10), // 10 mins ago
-        },
-        {
-            userId: 'user4',
-            machineId: 'machine10',
-            status: OrderStatus.WASHING,
-            washingMode: WashingMode.THOROUGHLY,
-            isSoak: true,
-            paymentMethod: paymentMethods[0],
-            price: 35000,
-            authCode: '890123',
-            createdAt: new Date(Date.now() - 1000 * 60 * 25), // 25 mins ago
-            washingAt: new Date(Date.now() - 1000 * 60 * 20), // 20 mins ago
-        },
-        {
-            userId: 'user4',
-            machineId: 'machine11',
-            status: OrderStatus.REFUNDED,
-            washingMode: WashingMode.NORMAL,
-            isSoak: false,
-            paymentMethod: paymentMethods[1],
-            price: 25000,
-            authCode: '901234',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-            cancelledAt: new Date(Date.now() - 1000 * 60 * 60 * 4.5), // 4.5 hours ago
-        },
-        {
-            userId: 'user5',
-            machineId: 'machine12',
-            status: OrderStatus.FINISHED,
-            washingMode: WashingMode.THOROUGHLY,
-            isSoak: true,
-            paymentMethod: paymentMethods[2],
-            price: 35000,
-            authCode: '012345',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6), // 6 hours ago
-            washingAt: new Date(Date.now() - 1000 * 60 * 60 * 5.8), // 5.8 hours ago
-            finishedAt: new Date(Date.now() - 1000 * 60 * 60 * 5.3), // 5.3 hours ago
-        },
-        // Add more orders for the past week
-        {
-            userId: 'user1',
-            machineId: 'machine3',
-            status: OrderStatus.CONFIRMED,
-            washingMode: WashingMode.NORMAL,
-            isSoak: false,
-            paymentMethod: paymentMethods[0],
-            price: 25000,
-            authCode: '123001',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
-            washingAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3 + 1000 * 60 * 10), // 3 days - 10 mins ago
-            finishedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3 + 1000 * 60 * 60), // 3 days - 1 hour ago
-        },
-        {
-            userId: 'user2',
-            machineId: 'machine4',
-            status: OrderStatus.CONFIRMED,
-            washingMode: WashingMode.THOROUGHLY,
-            isSoak: true,
-            paymentMethod: paymentMethods[1],
-            price: 35000,
-            authCode: '123002',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4), // 4 days ago
-            washingAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4 + 1000 * 60 * 15), // 4 days - 15 mins ago
-            finishedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4 + 1000 * 60 * 60), // 4 days - 1 hour ago
-        },
-        {
-            userId: 'user3',
-            machineId: 'machine5',
-            status: OrderStatus.CONFIRMED,
-            washingMode: WashingMode.NORMAL,
-            isSoak: false,
-            paymentMethod: paymentMethods[2],
-            price: 25000,
-            authCode: '123003',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5), // 5 days ago
-            washingAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5 + 1000 * 60 * 20), // 5 days - 20 mins ago
-            finishedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5 + 1000 * 60 * 60), // 5 days - 1 hour ago
-        },
-        {
-            userId: 'user4',
-            machineId: 'machine6',
-            status: OrderStatus.CONFIRMED,
-            washingMode: WashingMode.THOROUGHLY,
-            isSoak: true,
-            paymentMethod: paymentMethods[0],
-            price: 35000,
-            authCode: '123004',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6), // 6 days ago
-            washingAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6 + 1000 * 60 * 25), // 6 days - 25 mins ago
-            finishedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6 + 1000 * 60 * 60), // 6 days - 1 hour ago
-        },
-        {
-            userId: 'user5',
-            machineId: 'machine7',
-            status: OrderStatus.CONFIRMED,
-            washingMode: WashingMode.NORMAL,
-            isSoak: false,
-            paymentMethod: paymentMethods[1],
-            price: 25000,
-            authCode: '123005',
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7), // 7 days ago
-            washingAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7 + 1000 * 60 * 30), // 7 days - 30 mins ago
-            finishedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7 + 1000 * 60 * 60), // 7 days - 1 hour ago
-        },
+    const washingModes = [WashingMode.NORMAL, WashingMode.THOROUGHLY];
+    const possibleStatuses = [
+        OrderStatus.FINISHED,
+        OrderStatus.FINISHED,
+        OrderStatus.FINISHED, // Higher chance of finished/confirmed
+        OrderStatus.CONFIRMED,
+        OrderStatus.CONFIRMED,
+        OrderStatus.CONFIRMED,
+        OrderStatus.WASHING, // Some ongoing
+        OrderStatus.PENDING,
+        OrderStatus.CANCELLED, // Few cancelled/refunded
+        OrderStatus.REFUNDED,
     ];
 
-    for (const order of orderData) {
-        await prisma.order.create({
-            data: order,
-        });
+    for (let i = 0; i < NUMBER_OF_DAYS_TO_SEED; i++) {
+        const currentDayStart = new Date(today);
+        currentDayStart.setDate(today.getDate() - i);
+        currentDayStart.setHours(0, 0, 0, 0);
+
+        const currentDayEnd = new Date(currentDayStart);
+        currentDayEnd.setHours(23, 59, 59, 999);
+
+        const numOrdersToday = getRandomInt(ORDERS_PER_DAY_RANGE.min, ORDERS_PER_DAY_RANGE.max);
+
+        for (let j = 0; j < numOrdersToday; j++) {
+            let createdAt = getRandomDateInRange(currentDayStart, currentDayEnd); // Changed to let
+            const status = getRandomElement(possibleStatuses);
+            const washingMode = getRandomElement(washingModes);
+            const price = washingMode === WashingMode.NORMAL ? 25000 : 35000;
+
+            let washingAt: Date | null = null;
+            let finishedAt: Date | null = null;
+            let cancelledAt: Date | null = null;
+
+            if (status !== OrderStatus.PENDING && status !== OrderStatus.CANCELLED && status !== OrderStatus.REFUNDED) {
+                washingAt = addMinutes(createdAt, getRandomInt(5, 15)); // Start washing 5-15 mins after creation
+            }
+            if (status === OrderStatus.FINISHED || status === OrderStatus.CONFIRMED) {
+                if (washingAt) {
+                    finishedAt = addMinutes(washingAt, getRandomInt(WASH_DURATION_MINUTES.min, WASH_DURATION_MINUTES.max));
+                } else {
+                    // Should have washingAt, but handle defensively
+                    finishedAt = addMinutes(createdAt, getRandomInt(WASH_DURATION_MINUTES.min + 5, WASH_DURATION_MINUTES.max + 15));
+                }
+            }
+            if (status === OrderStatus.CANCELLED || status === OrderStatus.REFUNDED) {
+                cancelledAt = addMinutes(createdAt, getRandomInt(1, 60)); // Cancelled/refunded within an hour
+            }
+
+            // Ensure future dates are corrected based on status
+            if (finishedAt && finishedAt > today && (status === OrderStatus.FINISHED || status === OrderStatus.CONFIRMED)) {
+                finishedAt = addMinutes(today, -getRandomInt(1, 30)); // Adjust finish time to be in the past
+                if (washingAt && washingAt > finishedAt) {
+                    // If washingAt exists and is after adjusted finishedAt
+                    washingAt = addMinutes(finishedAt, -getRandomInt(WASH_DURATION_MINUTES.min, WASH_DURATION_MINUTES.max)); // Adjust washingAt based on adjusted finishedAt
+                }
+                // Adjust createdAt if it's after the potentially adjusted washingAt
+                if (washingAt && createdAt > washingAt) {
+                    createdAt = addMinutes(washingAt, -getRandomInt(5, 15));
+                } else if (!washingAt && createdAt > finishedAt) {
+                    // Handle case where washingAt might be null but finishedAt was adjusted
+                    createdAt = addMinutes(finishedAt, -getRandomInt(WASH_DURATION_MINUTES.min + 5, WASH_DURATION_MINUTES.max + 15));
+                }
+            } else if (washingAt && washingAt > today && status === OrderStatus.WASHING) {
+                // Ensure washingAt is not in the future if status is WASHING
+                washingAt = addMinutes(today, -getRandomInt(1, WASH_DURATION_MINUTES.min - 5)); // Adjust washing start to be in the past
+                // Adjust createdAt if it's after the adjusted washingAt
+                if (createdAt > washingAt) {
+                    createdAt = addMinutes(washingAt, -getRandomInt(5, 15));
+                }
+            }
+
+            const order = {
+                userId: getRandomElement(userIds),
+                machineId: getRandomElement(machineIds),
+                status: status,
+                washingMode: washingMode,
+                isSoak: Math.random() > 0.5, // Randomly decide soak
+                paymentMethod: getRandomElement(paymentMethods),
+                price: price,
+                authCode: generateRandomAuthCode(),
+                createdAt: createdAt,
+                washingAt: washingAt,
+                finishedAt: finishedAt,
+                cancelledAt: cancelledAt,
+            };
+            allOrdersData.push(order);
+        }
     }
 
-    console.log(`${orderData.length} orders created`);
+    // Use createMany for bulk insertion
+    await prisma.order.createMany({
+        data: allOrdersData,
+    });
+
+    console.log(`${allOrdersData.length} orders created over ${NUMBER_OF_DAYS_TO_SEED} days.`);
 }
 
 async function generatePowerUsageData() {
-    // Fetch orders that are finished or confirmed
+    // Fetch orders that are finished or confirmed and have a finishedAt date
     const completedOrders = await prisma.order.findMany({
         where: {
             status: {
                 in: [OrderStatus.FINISHED, OrderStatus.CONFIRMED],
             },
+            finishedAt: {
+                not: null, // Ensure finishedAt is set
+            },
+        },
+        select: {
+            // Select only necessary fields
+            id: true,
+            machineId: true,
+            washingMode: true,
+            finishedAt: true,
         },
     });
 
-    const powerUsageData = completedOrders.map(order => ({
-        orderId: order.id,
-        machineId: order.machineId,
-        totalKwh: order.washingMode === WashingMode.NORMAL
-            ? Math.random() * 0.5 + 0.5 // Between 0.5 and 1.0 kWh for normal mode
-            : Math.random() * 1.0 + 1.0, // Between 1.0 and 2.0 kWh for thorough mode
-        recordedAt: order.finishedAt || new Date(),
-    }));
-
-    for (const usage of powerUsageData) {
-        await prisma.powerUsageData.create({
-            data: usage,
-        });
+    if (completedOrders.length === 0) {
+        console.log('No completed orders found to generate power usage data for.');
+        return;
     }
 
-    console.log(`${powerUsageData.length} power usage records created`);
+    const powerUsageData = completedOrders.map((order) => {
+        const kwhRange = KWH_RANGES[order.washingMode];
+        const totalKwh = getRandomFloat(kwhRange.min, kwhRange.max);
+
+        return {
+            orderId: order.id,
+            machineId: order.machineId,
+            totalKwh: totalKwh,
+            recordedAt: order.finishedAt!, // Use the order's finish time, assert non-null based on query
+        };
+    });
+
+    // Use createMany for bulk insertion
+    await prisma.powerUsageData.createMany({
+        data: powerUsageData,
+        skipDuplicates: true, // Skip if orderId constraint violated (e.g., re-running seed)
+    });
+
+    console.log(`${powerUsageData.length} power usage records created.`);
 }
 
+// --- Main Execution ---
+
 async function main() {
-    // Clear existing data
+    // Clear existing data in specific order due to relations
     console.log('Cleaning up existing data...');
     await prisma.powerUsageData.deleteMany({});
     await prisma.order.deleteMany({});
-    await prisma.washingMachine.deleteMany({});
-    await prisma.fCMToken.deleteMany({});
+    await prisma.fCMToken.deleteMany({}); // Depends on User
     await prisma.user.deleteMany({});
-    
+    await prisma.washingMachine.deleteMany({});
+    console.log('Cleanup complete.');
+
     console.log('Starting to seed database...');
-    await generateUsers();
-    await generateWashingMachines();
-    await generateOrders();
+    const userIds = await generateUsers();
+    const machineIds = await generateWashingMachines();
+    await generateOrders(userIds, machineIds);
     await generatePowerUsageData();
     console.log('Seeding completed successfully!');
 }
 
 main()
     .catch((e) => {
-        console.error(e);
+        console.error('Seeding failed:', e);
         process.exit(1);
     })
     .finally(async () => {
         await prisma.$disconnect();
-    process.exit(0);
-});
+        // process.exit(0); // Exit commented out to allow terminal reuse in VS Code
+    });
