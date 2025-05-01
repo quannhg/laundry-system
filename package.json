@@ -24,6 +24,7 @@
     "db:deploy": "npx prisma migrate deploy",
     "db:generate": "npx prisma generate",
     "db:studio": "npx prisma studio",
+    "db:reseed": "ts-node scripts/reseed.ts",
     "lint": "eslint '**/*.{ts,js}'",
     "lint:fix": "eslint '**/*.{ts,js}' --fix",
     "format": "prettier '**/*.{ts,js,json}' --write",

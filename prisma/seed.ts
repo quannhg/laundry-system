@@ -16,6 +16,9 @@ const WASHING_MODE_NAMES = {
     THOROUGHLY: 'Giặt kỹ',
 };
 
+// Target year for data generation
+const TARGET_YEAR = 2025;
+
 const KWH_RANGES = {
     [WASHING_MODE_NAMES.NORMAL]: { min: 0.4, max: 0.9 },
     [WASHING_MODE_NAMES.THOROUGHLY]: { min: 0.8, max: 1.8 },
@@ -146,13 +149,6 @@ function getRandomFloat(min: number, max: number, decimals: number = 2): number 
     return parseFloat(str);
 }
 
-function getRandomDatePastYear(): Date {
-    const today = new Date();
-    const pastDate = new Date(today);
-    pastDate.setDate(today.getDate() - 365); // Go back 365 days
-    return new Date(pastDate.getTime() + Math.random() * (today.getTime() - pastDate.getTime()));
-}
-
 function addMinutes(date: Date, minutes: number): Date {
     return new Date(date.getTime() + minutes * 60000);
 }
@@ -172,6 +168,52 @@ function generateEmailFromName(name: string): string {
         .replace(/\s+/g, '.') // Replace spaces with dots
         .replace(/[^a-z0-9.]/g, ''); // Remove invalid characters
     return `${cleanedName}@example.com`;
+}
+
+// New functions for target year date generation
+function getRandomDateInYear(year = TARGET_YEAR): Date {
+    const start = new Date(year, 0, 1); // January 1st of target year
+    const end = new Date(year, 11, 31, 23, 59, 59); // December 31st of target year
+
+    return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+}
+
+function getRandomDateInMonth(year = TARGET_YEAR, month = 0): Date {
+    // month is 0-indexed (0 = January, 11 = December)
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const day = Math.floor(Math.random() * daysInMonth) + 1;
+
+    return new Date(
+        year,
+        month,
+        day,
+        Math.floor(Math.random() * 24), // Random hour
+        Math.floor(Math.random() * 60), // Random minute
+        Math.floor(Math.random() * 60), // Random second
+    );
+}
+
+// Distribute dates evenly throughout the year
+function getDistributedDates(count: number, year = TARGET_YEAR): Date[] {
+    const dates: Date[] = [];
+
+    // Ensure at least some orders in each month
+    for (let month = 0; month < 12; month++) {
+        // Add 5-15 orders per month as a baseline
+        const ordersPerMonth = Math.floor(Math.random() * 10) + 5;
+
+        for (let i = 0; i < ordersPerMonth; i++) {
+            dates.push(getRandomDateInMonth(year, month));
+        }
+    }
+
+    // Fill the rest randomly throughout the year
+    while (dates.length < count) {
+        dates.push(getRandomDateInYear(year));
+    }
+
+    // Sort chronologically
+    return dates.sort((a, b) => a.getTime() - b.getTime());
 }
 
 // --- Data Generation Functions ---
@@ -350,6 +392,9 @@ async function generateOrders(userIds: string[], machineIds: string[], washingMo
         userOrderCounts[id] = { pending: 0, washing: 0 };
     });
 
+    // Generate distributed dates for 2025
+    const distributedDates = getDistributedDates(TOTAL_ORDERS_TO_SEED);
+
     for (let i = 0; i < TOTAL_ORDERS_TO_SEED; i++) {
         const userId = getRandomElement(userIds);
         const machineId = getRandomElement(machineIds);
@@ -374,12 +419,26 @@ async function generateOrders(userIds: string[], machineIds: string[], washingMo
         const washingModeId = getRandomElement(washingModeIds);
         const selectedWashingMode = washingModes.find((mode) => mode.id === washingModeId)!;
         const price = selectedWashingMode.price;
-        let createdAt = getRandomDatePastYear(); // Generate random date in the past year
+
+        // Use the distributed date as the creation date
+        let createdAt = distributedDates[i];
+
+        // Special handling for PENDING and WASHING orders near the end of the dataset:
+        // If we're in the last 5% of orders and the date is close to the end of the year,
+        // consider making some orders active (PENDING/WASHING) for testing current functionality
+        const isRecentOrder = i > TOTAL_ORDERS_TO_SEED * 0.95;
+        const isEndOfYear = createdAt.getMonth() >= 10; // November or December
+
+        // For orders supposed to be "happening now"
+        if (isRecentOrder && isEndOfYear && (status === OrderStatus.PENDING || status === OrderStatus.WASHING)) {
+            // Set createdAt to a very recent date instead of 2025
+            const now = new Date();
+            createdAt = new Date(now.getTime() - getRandomInt(0, 48) * 60 * 60 * 1000); // 0-48 hours ago
+        }
 
         let washingAt: Date | null = null;
         let finishedAt: Date | null = null;
         let cancelledAt: Date | null = null;
-        const now = new Date(); // Reference point for future checks
 
         // Calculate timestamps based on status
         if (status === OrderStatus.WASHING || status === OrderStatus.FINISHED || status === OrderStatus.CONFIRMED) {
@@ -395,45 +454,6 @@ async function generateOrders(userIds: string[], machineIds: string[], washingMo
         }
         if (status === OrderStatus.CANCELLED || status === OrderStatus.REFUNDED) {
             cancelledAt = addMinutes(createdAt, getRandomInt(1, 60)); // Cancelled/refunded within an hour
-        }
-
-        // --- Timestamp Correction Logic ---
-        // Ensure timestamps are not in the future and maintain chronological order
-
-        // 1. Correct finishedAt if it's in the future
-        if (finishedAt && finishedAt > now) {
-            finishedAt = addMinutes(now, -getRandomInt(1, 60)); // Set finish time to sometime in the last hour
-        }
-
-        // 2. Correct washingAt based on finishedAt (if finishedAt exists and was potentially corrected)
-        if (finishedAt && washingAt && washingAt > finishedAt) {
-            washingAt = addMinutes(finishedAt, -getRandomInt(WASH_DURATION_MINUTES.min, WASH_DURATION_MINUTES.max));
-        }
-        // Also correct washingAt if it's simply in the future (and finishedAt doesn't exist or is also future)
-        else if (washingAt && washingAt > now) {
-            washingAt = addMinutes(now, -getRandomInt(1, WASH_DURATION_MINUTES.min)); // Set washing start to sometime recently
-        }
-
-        // 3. Correct createdAt based on washingAt (if washingAt exists and was potentially corrected)
-        if (washingAt && createdAt > washingAt) {
-            createdAt = addMinutes(washingAt, -getRandomInt(5, 15)); // Ensure createdAt is before washingAt
-        }
-        // Also correct createdAt if it's after finishedAt (when washingAt might be null)
-        else if (finishedAt && createdAt > finishedAt) {
-            createdAt = addMinutes(finishedAt, -getRandomInt(WASH_DURATION_MINUTES.min + 5, WASH_DURATION_MINUTES.max + 15));
-        }
-        // Also correct createdAt if it's simply in the future
-        else if (createdAt > now) {
-            createdAt = addMinutes(now, -getRandomInt(60, 120)); // Set creation to 1-2 hours ago if it ended up future
-        }
-
-        // 4. Correct cancelledAt if it's in the future or before createdAt
-        if (cancelledAt && cancelledAt > now) {
-            cancelledAt = addMinutes(now, -getRandomInt(1, 30)); // Set cancellation recently
-        }
-        if (cancelledAt && createdAt > cancelledAt) {
-            // This case implies createdAt was pushed back significantly. Adjust cancellation too.
-            cancelledAt = addMinutes(createdAt, getRandomInt(1, 60));
         }
 
         const order = {
@@ -462,7 +482,7 @@ async function generateOrders(userIds: string[], machineIds: string[], washingMo
 
     await prisma.order.createMany({
         data: allOrdersData,
-        skipDuplicates: true, // Skip if unique constraints violated (less likely now)
+        skipDuplicates: true, // Skip if unique constraints violated
     });
 
     console.log(`${allOrdersData.length} orders created.`);
