@@ -12,8 +12,8 @@ const MAX_WASHING_ORDERS_PER_USER = 2;
 
 // Define washing modes by name instead of enum
 const WASHING_MODE_NAMES = {
-    NORMAL: 'NORMAL',
-    THOROUGHLY: 'THOROUGHLY',
+    NORMAL: 'Giặt thường',
+    THOROUGHLY: 'Giặt kỹ',
 };
 
 const KWH_RANGES = {
