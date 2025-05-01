@@ -1,5 +1,5 @@
 import { hashSync } from 'bcrypt';
-import { LaundryStatus, OrderStatus, PrismaClient, WashingMode, User } from '@prisma/client';
+import { LaundryStatus, OrderStatus, PrismaClient, User, WashingMode } from '@prisma/client';
 import { faker } from '@faker-js/faker/locale/vi'; // Using faker for potential future use or fallback
 
 const prisma = new PrismaClient();
@@ -10,9 +10,15 @@ const TOTAL_ORDERS_TO_SEED = 500;
 const MAX_PENDING_ORDERS_PER_USER = 3;
 const MAX_WASHING_ORDERS_PER_USER = 2;
 
+// Define washing modes by name instead of enum
+const WASHING_MODE_NAMES = {
+    NORMAL: 'NORMAL',
+    THOROUGHLY: 'THOROUGHLY',
+};
+
 const KWH_RANGES = {
-    [WashingMode.NORMAL]: { min: 0.4, max: 0.9 },
-    [WashingMode.THOROUGHLY]: { min: 0.8, max: 1.8 },
+    [WASHING_MODE_NAMES.NORMAL]: { min: 0.4, max: 0.9 },
+    [WASHING_MODE_NAMES.THOROUGHLY]: { min: 0.8, max: 1.8 },
 };
 const WASH_DURATION_MINUTES = { min: 45, max: 75 }; // Duration of a wash cycle
 const DEFAULT_PASSWORD = 'password123';
@@ -170,6 +176,35 @@ function generateEmailFromName(name: string): string {
 
 // --- Data Generation Functions ---
 
+async function generateWashingModes() {
+    // Ensure washing modes exist in the database
+    const modes = [
+        {
+            name: WASHING_MODE_NAMES.NORMAL,
+            price: 25000,
+            isActive: true,
+        },
+        {
+            name: WASHING_MODE_NAMES.THOROUGHLY,
+            price: 35000,
+            isActive: true,
+        },
+    ];
+
+    for (const mode of modes) {
+        await prisma.washingMode.upsert({
+            where: { name: mode.name },
+            update: {},
+            create: mode,
+        });
+    }
+
+    // Get all washing modes for later use
+    const washingModes = await prisma.washingMode.findMany();
+    console.log(`${washingModes.length} washing modes ensured.`);
+    return washingModes;
+}
+
 async function generateWashingMachines() {
     // Define possible non-broken statuses
     const operationalStatuses = [
@@ -276,10 +311,20 @@ async function generateUsers() {
     return usersToCreate.map((u) => u.id); // Return IDs
 }
 
-async function generateOrders(userIds: string[], machineIds: string[]) {
+async function generateOrders(userIds: string[], machineIds: string[], washingModes: WashingMode[]) {
     const allOrdersData = [];
     const paymentMethods = ['Credit Card', 'Cash', 'Mobile Banking'];
-    const washingModes = [WashingMode.NORMAL, WashingMode.THOROUGHLY];
+
+    // Reference washing modes by their database IDs
+    const normalModeId = washingModes.find((mode) => mode.name === WASHING_MODE_NAMES.NORMAL)?.id;
+    const thoroughlyModeId = washingModes.find((mode) => mode.name === WASHING_MODE_NAMES.THOROUGHLY)?.id;
+
+    if (!normalModeId || !thoroughlyModeId) {
+        throw new Error('Required washing modes not found in database');
+    }
+
+    const washingModeIds = [normalModeId, thoroughlyModeId];
+
     const possibleStatuses = [
         OrderStatus.FINISHED,
         OrderStatus.FINISHED,
@@ -320,8 +365,9 @@ async function generateOrders(userIds: string[], machineIds: string[]) {
         }
 
         const status = getRandomElement(availableStatuses);
-        const washingMode = getRandomElement(washingModes);
-        const price = washingMode === WashingMode.NORMAL ? 25000 : 35000;
+        const washingModeId = getRandomElement(washingModeIds);
+        const selectedWashingMode = washingModes.find((mode) => mode.id === washingModeId)!;
+        const price = selectedWashingMode.price;
         let createdAt = getRandomDatePastYear(); // Generate random date in the past year
 
         let washingAt: Date | null = null;
@@ -388,7 +434,7 @@ async function generateOrders(userIds: string[], machineIds: string[]) {
             userId: userId,
             machineId: machineId,
             status: status,
-            washingMode: washingMode,
+            washingModeId: washingModeId, // Use ID instead of enum
             isSoak: Math.random() > 0.5,
             paymentMethod: getRandomElement(paymentMethods),
             price: price,
@@ -425,13 +471,12 @@ async function generatePowerUsageData() {
             finishedAt: {
                 not: null,
             },
-            // Ensure we don't try to create duplicates if seed runs again
-            powerUsage: null, // Corrected property name
+            powerUsage: null,
         },
         select: {
             id: true,
             machineId: true,
-            washingMode: true,
+            washingMode: true, // This will now be a relation
             finishedAt: true,
         },
     });
@@ -442,7 +487,9 @@ async function generatePowerUsageData() {
     }
 
     const powerUsageData = completedOrders.map((order) => {
-        const kwhRange = KWH_RANGES[order.washingMode];
+        // Use the name of the washing mode to determine the kWh range
+        const modeName = order.washingMode.name;
+        const kwhRange = KWH_RANGES[modeName] || KWH_RANGES[WASHING_MODE_NAMES.NORMAL];
         const totalKwh = getRandomFloat(kwhRange.min, kwhRange.max);
 
         return {
@@ -470,9 +517,10 @@ async function main() {
     console.log('Cleanup complete.');
 
     console.log('Starting to seed database with new logic...');
+    const washingModes = await generateWashingModes(); // First create washing modes
     const userIds = await generateUsers();
     const machineIds = await generateWashingMachines();
-    await generateOrders(userIds, machineIds);
+    await generateOrders(userIds, machineIds, washingModes);
     await generatePowerUsageData();
     console.log('Seeding completed successfully!');
 }
