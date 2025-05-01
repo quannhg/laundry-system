@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "WashingMode" ADD COLUMN     "capacity" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "duration" INTEGER NOT NULL DEFAULT 0;

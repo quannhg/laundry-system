@@ -46,6 +46,9 @@ model WashingMode {
   name        String  @unique
   price       Int     // in VND
   isActive    Boolean @default(true)
+  // Add these fields
+  duration    Int     @default(0)  // in minutes
+  capacity    Int     @default(0)  // in kg
   orders      Order[]
 }
 

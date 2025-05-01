@@ -183,11 +183,15 @@ async function generateWashingModes() {
             name: WASHING_MODE_NAMES.NORMAL,
             price: 25000,
             isActive: true,
+            duration: 45, // Duration in minutes for normal washing
+            capacity: 8, // Capacity in kg for normal washing
         },
         {
             name: WASHING_MODE_NAMES.THOROUGHLY,
             price: 35000,
             isActive: true,
+            duration: 70, // Duration in minutes for thorough washing (longer)
+            capacity: 8, // Same capacity in kg
         },
     ];
 
@@ -204,6 +208,8 @@ async function generateWashingModes() {
     console.log(`${washingModes.length} washing modes ensured.`);
     return washingModes;
 }
+
+// --- Data Generation Functions ---
 
 async function generateWashingMachines() {
     // Define possible non-broken statuses
@@ -505,15 +511,20 @@ async function generatePowerUsageData() {
         skipDuplicates: true, // Skip if orderId constraint violated
     });
 
-    console.log(`${powerUsageData.length} power usage records created`);
+    console.log(`${powerUsageData.length} power usage records created.`);
 }
+
+// --- Main Execution ---
 
 async function main() {
     console.log('Cleaning up existing data...');
     // Delete in order of dependency
     await prisma.powerUsageData.deleteMany({});
     await prisma.order.deleteMany({});
+    await prisma.fCMToken.deleteMany({}); // Depends on User
+    await prisma.user.deleteMany({});
     await prisma.washingMachine.deleteMany({});
+    await prisma.washingMode.deleteMany({}); // Depends on WashingMode
     console.log('Cleanup complete.');
 
     console.log('Starting to seed database with new logic...');
@@ -527,7 +538,7 @@ async function main() {
 
 main()
     .catch((e) => {
-        console.error(e);
+        console.error('Seeding failed:', e);
         process.exit(1);
     })
     .finally(async () => {
