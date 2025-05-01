@@ -2,9 +2,15 @@ import { prisma } from '@repositories';
 import { Handler } from '@interfaces';
 import { logger } from '@utils';
 import { CreateOrderInputDto, SearchOrdersInputDto, UpdateStatusOrderInputDto } from '@dtos/in';
-import { CreateOrderResultDto, GetAllOrderResultDto, SearchOrdersResultDto, UpdateStatusOrderResultDto } from '@dtos/out';
-import { WashingMode, OrderStatus } from '@prisma/client';
-import { MESSAGE_TYPE, MQTT_TO_HARDWARE_TOPIC, PaymentMethod, SoakPrice, WashingPrice } from '@constants';
+import {
+    CreateOrderResultDto,
+    GetAllOrderResultDto,
+    SearchOrdersResultDto,
+    UpdateStatusOrderResultDto,
+    GetOrderByIdResultDto,
+} from '@dtos/out';
+import { OrderStatus, Prisma } from '@prisma/client';
+import { MESSAGE_TYPE, MQTT_TO_HARDWARE_TOPIC, PaymentMethod, SoakPrice } from '@constants';
 import { pushNotification } from '@utils';
 import { mqttClient } from '../mqtt/client';
 
@@ -17,33 +23,44 @@ const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = asy
         const washingMachine = await prisma.washingMachine.findFirst({
             where: {
                 status: 'IDLE',
+                orders: {
+                    none: {
+                        status: OrderStatus.PENDING,
+                    },
+                },
+            },
+            orderBy: {
+                machineNo: 'asc',
             },
         });
         if (!washingMachine) {
             return res.status(400).send({ error: 'No idle washing machine available' });
         }
-        let washingModeDb;
-        let washingPrice;
-        switch (washingMode) {
-            case 'normal':
-                washingModeDb = WashingMode.NORMAL;
-                washingPrice = WashingPrice.NORMAL;
-                break;
-            case 'thoroughly':
-                washingModeDb = WashingMode.THOROUGHLY;
-                washingPrice = WashingPrice.THOROUGHLY;
-                break;
-            default:
-                return res.status(400).send({ error: 'Invalid washing mode' });
+
+        // Fetch washing mode from database instead of using enum
+        const washingModeRecord = await prisma.washingMode.findFirst({
+            where: {
+                name: washingMode === 'normal' ? 'Giặt thường' : 'Giặt kỹ',
+                isActive: true,
+            },
+        });
+
+        if (!washingModeRecord) {
+            return res.status(400).send({ error: 'Invalid washing mode or washing mode not available' });
         }
+
+        // Use price from database
+        let washingPrice = washingModeRecord.price;
+
         if (isSoak) {
             washingPrice += SoakPrice;
         }
+
         const order = await prisma.order.create({
             data: {
                 userId: req.userId,
                 machineId: washingMachine.id,
-                washingMode: washingModeDb,
+                washingModeId: washingModeRecord.id, // Use the washing mode ID
                 status: OrderStatus.PENDING,
                 price: washingPrice,
                 isSoak: isSoak,
@@ -90,7 +107,7 @@ const create: Handler<CreateOrderResultDto, { Body: CreateOrderInputDto }> = asy
             authCode: order.authCode,
             price: order.price,
             status: order.status,
-            washingMode: order.washingMode,
+            washingMode: order.washingMode.name, // Use the name from the model
             isSoak: order.isSoak,
             paymentMethod: order.paymentMethod,
             createAt: order.createdAt.toISOString(),
@@ -258,10 +275,10 @@ const removeAll: Handler<{ success: boolean }> = async (_req, res) => {
 const searchOrders: Handler<SearchOrdersResultDto, { Querystring: SearchOrdersInputDto }> = async (req, res) => {
     try {
         const { customerName, orderCode, status, page = 1, limit = 10 } = req.query;
-        
+
         // Build the where clause based on filter parameters
-        const where: any = {};
-        
+        const where: Prisma.OrderWhereInput = {};
+
         // Filter by customer name if provided
         if (customerName) {
             where.user = {
@@ -271,7 +288,7 @@ const searchOrders: Handler<SearchOrdersResultDto, { Querystring: SearchOrdersIn
                 },
             };
         }
-        
+
         // Filter by order code (auth code)
         if (orderCode) {
             where.authCode = {
@@ -279,18 +296,18 @@ const searchOrders: Handler<SearchOrdersResultDto, { Querystring: SearchOrdersIn
                 mode: 'insensitive',
             };
         }
-        
+
         // Filter by status
         if (status) {
-            where.status = status.toUpperCase();
+            where.status = status.toUpperCase() as OrderStatus;
         }
-        
+
         // Calculate pagination
         const skip = (page - 1) * limit;
-        
+
         // Get total count of matching orders
         const totalOrders = await prisma.order.count({ where });
-        
+
         // Get orders with filtering and pagination
         const orders = await prisma.order.findMany({
             where,
@@ -328,7 +345,7 @@ const searchOrders: Handler<SearchOrdersResultDto, { Querystring: SearchOrdersIn
             skip,
             take: limit,
         });
-        
+
         // Format orders for response
         const formattedOrders = orders.map((order) => {
             return {
@@ -353,10 +370,10 @@ const searchOrders: Handler<SearchOrdersResultDto, { Querystring: SearchOrdersIn
                 },
             };
         });
-        
+
         // Calculate total pages
         const totalPages = Math.ceil(totalOrders / limit);
-        
+
         res.status(200).send({
             orders: formattedOrders,
             pagination: {
@@ -372,9 +389,67 @@ const searchOrders: Handler<SearchOrdersResultDto, { Querystring: SearchOrdersIn
     }
 };
 
+const getById: Handler<GetOrderByIdResultDto, { Params: { id: string } }> = async (req, res) => {
+    try {
+        const order = await prisma.order.findUnique({
+            where: { id: req.params.id },
+            select: {
+                id: true,
+                userId: true,
+                status: true,
+                price: true,
+                isSoak: true,
+                paymentMethod: true,
+                authCode: true,
+                createdAt: true,
+                washingAt: true,
+                finishedAt: true,
+                cancelledAt: true,
+                washingMode: true,
+                machine: {
+                    select: {
+                        id: true,
+                        machineNo: true,
+                        status: true,
+                    },
+                },
+            },
+        });
+
+        if (!order) {
+            return res.status(404).send({ error: 'Order not found' });
+        }
+
+        // Format response
+        const responseOrder = {
+            id: order.id,
+            userId: order.userId,
+            status: order.status,
+            price: order.price,
+            isSoak: order.isSoak,
+            paymentMethod: order.paymentMethod,
+            washingStatus: order.machine.status,
+            authCode: order.authCode,
+            createAt: order.createdAt.toISOString(),
+            washingAt: order.washingAt?.toISOString() ?? null,
+            finishedAt: order.finishedAt?.toISOString() ?? null,
+            cancelledAt: order.cancelledAt?.toISOString() ?? null,
+            machineId: order.machine.id,
+            machineNo: order.machine.machineNo,
+            washingMode: order.washingMode,
+        };
+
+        res.send(responseOrder);
+    } catch (error) {
+        logger.error(`Error getting order by id: ${error}`);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+};
+
 export const ordersHandle = {
     create,
     getAll,
+    getById,
     updateStatus,
     remove,
     removeAll,
