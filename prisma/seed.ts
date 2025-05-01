@@ -432,6 +432,7 @@ async function generatePowerUsageData() {
             id: true,
             machineId: true,
             washingMode: true,
+            finishedAt: true,
         },
     });
 
