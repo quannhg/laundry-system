@@ -11,3 +11,4 @@ export * from './power_usage_chart.dto';
 export * from './power_usage_summary.dto';
 export * from './user.dto';
 export * from './washing_machine.dto';
+export * from './washing_mode.dto';

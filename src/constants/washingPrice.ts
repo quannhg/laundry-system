@@ -1,8 +1,9 @@
-import { WashingMode } from '@prisma/client';
-
-export const WashingPrice: Record<WashingMode, number> = {
-    [WashingMode.NORMAL]: 25000,
-    [WashingMode.THOROUGHLY]: 35000,
+export const WashingPrice = {
+    NORMAL: 25000,
+    THOROUGHLY: 35000,
+    // QUICK: 20000,
+    // DELICATE: 30000,
+    // WOOL: 40000,
 };
 
 export const SoakPrice = 10000;

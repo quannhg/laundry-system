@@ -41,6 +41,14 @@ model WashingMachine {
   powerUsageData PowerUsageData[]
 }
 
+model WashingMode {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  price       Int     // in VND
+  isActive    Boolean @default(true)
+  orders      Order[]
+}
+
 model Order {
   id            String          @id @default(cuid())
   user          User            @relation(fields: [userId], references: [id])
@@ -48,7 +56,8 @@ model Order {
   machine       WashingMachine  @relation(fields: [machineId], references: [id])
   machineId     String
   status        OrderStatus
-  washingMode   WashingMode
+  washingMode   WashingMode     @relation(fields: [washingModeId], references: [id])
+  washingModeId String
   isSoak        Boolean?        @default(false)
   paymentMethod String?
   price         Int?
@@ -87,9 +96,4 @@ enum OrderStatus {
   CONFIRMED
   CANCELLED
   REFUNDED
-}
-
-enum WashingMode {
-  NORMAL
-  THOROUGHLY
 }

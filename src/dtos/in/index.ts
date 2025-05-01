@@ -9,3 +9,4 @@ export * from './power_usage.dto';
 export * from './power_usage_chart.dto';
 export * from './user.dto';
 export * from './washing_machine.dto';
+export * from './washing_mode.dto';
