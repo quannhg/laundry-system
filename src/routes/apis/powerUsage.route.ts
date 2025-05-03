@@ -1,7 +1,7 @@
 import { createRoutes } from '@utils';
-import { powerUsage, powerUsageChart, powerUsageSummaryHandler } from '@handlers';
-import { GetPowerUsageInputDto, PowerUsageChartQueryDto, PowerUsageSummaryQueryDto } from '@dtos/in';
-import { GetPowerUsageResultDto, PowerUsageChartResponseDto, PowerUsageSummaryResponseDto } from '@dtos/out';
+import { powerUsage, powerUsageChart, powerUsageSummaryHandler, powerUsageStatsHandler } from '@handlers'; // Add powerUsageStatsHandler
+import { GetPowerUsageInputDto, PowerUsageChartQueryDto, PowerUsageSummaryQueryDto, PowerUsageStatsQueryDto } from '@dtos/in'; // Add PowerUsageStatsQueryDto
+import { GetPowerUsageResultDto, PowerUsageChartResponseDto, PowerUsageSummaryResponseDto, PowerUsageStatsResponseDto } from '@dtos/out'; // Add PowerUsageStatsResponseDto
 
 export const powerUsagePlugin = createRoutes('PowerUsage', [
     {
@@ -48,5 +48,21 @@ export const powerUsagePlugin = createRoutes('PowerUsage', [
             ],
         },
         handler: powerUsageSummaryHandler.getSummary,
+    },
+    {
+        // Add new stats endpoint
+        method: 'GET',
+        url: '/stats',
+        schema: {
+            summary: 'Get Power Usage Statistics',
+            description:
+                'Retrieves key power usage statistics (consumption, wash count, cost) for a specified period based on an optional reference date.',
+            querystring: PowerUsageStatsQueryDto,
+            response: {
+                200: PowerUsageStatsResponseDto,
+            },
+            security: [{ bearerAuth: [] }],
+        },
+        handler: powerUsageStatsHandler.getStats,
     },
 ]);
