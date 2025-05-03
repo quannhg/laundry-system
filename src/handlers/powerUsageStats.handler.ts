@@ -100,7 +100,9 @@ const getStats: Handler<PowerUsageStatsResponseDto, { Querystring: PowerUsageSta
         // Fetch total completed wash count
         const washCountData = await prisma.order.count({
             where: {
-                status: OrderStatus.FINISHED,
+                status: {
+                    in: [OrderStatus.FINISHED, OrderStatus.CONFIRMED],
+                },
                 // Ensure finishedAt is within the period
                 finishedAt: {
                     gte: start,
