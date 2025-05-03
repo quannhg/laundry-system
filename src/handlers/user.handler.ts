@@ -5,10 +5,11 @@ import { Handler } from '@interfaces';
 import { NotificationInputDto } from '../dtos/in/notification.dto';
 import { NotificationResultDto } from '../dtos/out/notification.dto';
 import { UserInputDto } from '@dtos/in';
-import { logger } from '@utils';
+import { logger, getUserClassification } from '@utils'; // Import getUserClassification
 import { CustomerStatQueryDto } from '@dtos/in';
 import { CustomerStatResponseDto } from '@dtos/out';
 import { OrderStatus } from '@prisma/client';
+// UserClassification is now imported via getUserClassification from @utils
 
 const getUserById: Handler<UserResultDto> = async (req, res) => {
     const userWithOrderCount = await prisma.user.findUnique({
@@ -33,10 +34,9 @@ const getUserById: Handler<UserResultDto> = async (req, res) => {
     });
 };
 
-
 const findUserById: Handler<UserResultDto, { Params: { id: string } }> = async (req, res) => {
     const { id } = req.params; // Lấy ID từ params thay vì req.userId
-    
+
     const userWithOrderCount = await prisma.user.findUnique({
         select: {
             username: true,
@@ -51,16 +51,15 @@ const findUserById: Handler<UserResultDto, { Params: { id: string } }> = async (
         },
         where: { id }, // Sử dụng ID từ params
     });
-    
+
     if (userWithOrderCount === null) return res.badRequest(USER_NOT_FOUND);
-    
+
     return res.send({
         ...userWithOrderCount,
         orderCount: userWithOrderCount._count.orders,
         avatarUrl: 'https://lh3.googleusercontent.com/a/ACg8ocIjkHVXfD15PLabkbAx1TlsWTsTf8sT_mXtwckwxcBV4UtMi4j_=s360-c-no',
     });
 };
-
 
 const updateUser: Handler<UserResultDto, { Body: UserInputDto }> = async (req, res) => {
     const userWithOrderCount = await prisma.user.update({
@@ -111,13 +110,7 @@ const addFCMToken: Handler<NotificationResultDto, { Body: NotificationInputDto }
     }
 };
 
-// Function to determine user classification based on order count and spending
-function getUserClassification(orderCount: number, totalSpending: number): string {
-    if (orderCount === 0) return 'Mới';
-    if (orderCount > 10 || totalSpending > 500000) return 'VIP';
-    if (orderCount > 5 || totalSpending > 200000) return 'Thân thiết';
-    return 'Thường xuyên';
-}
+// getUserClassification function moved to src/utils/userUtils.ts
 
 const getCustomerStats: Handler<
     CustomerStatResponseDto,
@@ -174,11 +167,11 @@ const getCustomerStats: Handler<
         });
 
         // Process users to calculate statistics and apply filters
-        let processedUsers = users.map(user => {
+        let processedUsers = users.map((user) => {
             const orderCount = user._count.orders;
             const totalSpending = user.orders.reduce((sum, order) => sum + (order.price || 0), 0);
             const userClassification = getUserClassification(orderCount, totalSpending);
-            
+
             return {
                 id: user.id,
                 name: user.name,
@@ -193,19 +186,19 @@ const getCustomerStats: Handler<
 
         // Apply filters
         if (classification) {
-            processedUsers = processedUsers.filter(user => user.classification === classification);
+            processedUsers = processedUsers.filter((user) => user.classification === classification);
         }
         if (minOrderCount !== undefined) {
-            processedUsers = processedUsers.filter(user => user.orderCount >= minOrderCount);
+            processedUsers = processedUsers.filter((user) => user.orderCount >= minOrderCount);
         }
         if (maxOrderCount !== undefined) {
-            processedUsers = processedUsers.filter(user => user.orderCount <= maxOrderCount);
+            processedUsers = processedUsers.filter((user) => user.orderCount <= maxOrderCount);
         }
         if (minSpending !== undefined) {
-            processedUsers = processedUsers.filter(user => user.totalSpending >= minSpending);
+            processedUsers = processedUsers.filter((user) => user.totalSpending >= minSpending);
         }
         if (maxSpending !== undefined) {
-            processedUsers = processedUsers.filter(user => user.totalSpending <= maxSpending);
+            processedUsers = processedUsers.filter((user) => user.totalSpending <= maxSpending);
         }
 
         // Get total count after filtering
@@ -215,16 +208,12 @@ const getCustomerStats: Handler<
         processedUsers.sort((a, b) => {
             const aValue = a[sortBy as keyof typeof a];
             const bValue = b[sortBy as keyof typeof b];
-            
+
             if (typeof aValue === 'string' && typeof bValue === 'string') {
-                return sortOrder === 'asc' 
-                    ? aValue.localeCompare(bValue) 
-                    : bValue.localeCompare(aValue);
+                return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
             }
-            
-            return sortOrder === 'asc'
-                ? (aValue as number) - (bValue as number)
-                : (bValue as number) - (aValue as number);
+
+            return sortOrder === 'asc' ? (aValue as number) - (bValue as number) : (bValue as number) - (aValue as number);
         });
 
         // Apply pagination

@@ -7,3 +7,5 @@ export * from './logger';
 export * from './powerUsageChart';
 export * from './publishMqttMessage';
 export * from './pushNotification';
+
+export * from './userUtils';

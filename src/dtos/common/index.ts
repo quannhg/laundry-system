@@ -3,3 +3,5 @@
  */
 
 export * from './objectId.dto';
+
+export * from './enums.dto';

@@ -7,6 +7,7 @@ export * from './insight.handler';
 export * from './order.handler';
 export * from './powerUsage.handler';
 export * from './powerUsageChart.handler';
+export * from './powerUsageStats.handler';
 export * from './powerUsageSummary.handler';
 export * from './user.handler';
 export * from './washingMachine.handler';
@@ -15,3 +16,5 @@ export * from './auth/auth.handler';
 export * from './auth/googleAuth.handler';
 export * from './auth/logout.hander';
 export * from './v2/index';
+
+export * from './customerSummary.handler';

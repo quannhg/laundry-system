@@ -1,6 +1,6 @@
 import { CustomerStatQueryDto, UserInputDto } from '@dtos/in';
-import { CustomerStatResponseDto, UserResultDto } from '@dtos/out';
-import { usersHandler } from '@handlers';
+import { CustomerStatResponseDto, UserResultDto, CustomerSummaryResponseDto } from '@dtos/out'; // Add CustomerSummaryResponseDto
+import { usersHandler, customerSummaryHandler } from '@handlers'; // Add customerSummaryHandler
 import { createRoutes } from '@utils';
 import { NotificationResultDto } from '../../dtos/out/notification.dto';
 import { NotificationInputDto } from '../../dtos/in/notification.dto';
@@ -40,6 +40,20 @@ export const userPlugin = createRoutes('User', [
             security: [{ bearerAuth: [] }],
         },
         handler: usersHandler.getCustomerStats,
+    },
+    {
+        // Add new summary endpoint
+        method: 'GET',
+        url: '/stats/summary',
+        schema: {
+            summary: 'Get Customer Classification Summary',
+            description: 'Retrieves the total number of customers and the count within each classification (New, Regular, Loyal, VIP).',
+            response: {
+                200: CustomerSummaryResponseDto,
+            },
+            security: [{ bearerAuth: [] }],
+        },
+        handler: customerSummaryHandler.getSummary,
     },
     {
         method: 'PUT',
