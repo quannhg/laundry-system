@@ -1,6 +1,6 @@
 import { createRoutes } from '@utils';
 import { powerUsage, powerUsageChart, powerUsageSummaryHandler } from '@handlers';
-import { GetPowerUsageInputDto, PowerUsageChartQueryDto } from '@dtos/in';
+import { GetPowerUsageInputDto, PowerUsageChartQueryDto, PowerUsageSummaryQueryDto } from '@dtos/in';
 import { GetPowerUsageResultDto, PowerUsageChartResponseDto, PowerUsageSummaryResponseDto } from '@dtos/out';
 
 export const powerUsagePlugin = createRoutes('PowerUsage', [
@@ -37,6 +37,7 @@ export const powerUsagePlugin = createRoutes('PowerUsage', [
             summary: 'Get Power Usage Summary',
             description:
                 'Retrieves aggregated power usage summaries for day, week, month, and year, comparing current period totals with the previous period.',
+            querystring: PowerUsageSummaryQueryDto,
             response: {
                 200: PowerUsageSummaryResponseDto,
             },

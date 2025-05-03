@@ -1,74 +1,47 @@
 import { Handler } from '@interfaces';
 import { prisma } from '@repositories';
-import { logger } from '@utils';
+import { logger, getPeriodDates } from '@utils'; // Import getPeriodDates
 import { PowerUsageSummaryResponseDto, PeriodSummaryDto } from '@dtos/out';
-type PeriodType = 'day' | 'week' | 'month' | 'year';
+import { PeriodType, PowerUsageSummaryQueryDto } from '@dtos/in'; // Import Query DTO
 
 /**
- * Calculates the power usage summary for a given period (current vs previous).
+ * Calculates the power usage summary for a given period (current vs previous) based on a reference date.
  * @param periodType - The type of period ('day', 'week', 'month', 'year').
+ * @param referenceDate - The date to base the calculations on.
  * @returns The summary data for the period.
  */
-async function getPeriodSummary(periodType: PeriodType): Promise<PeriodSummaryDto> {
-    // --- Calculate Date Ranges ---
-    const now = new Date();
-    let currentStart: Date, currentEnd: Date, previousStart: Date, previousEnd: Date;
+async function getPeriodSummary(periodType: PeriodType, referenceDate: Date): Promise<PeriodSummaryDto> {
+    // --- Calculate Date Ranges using getPeriodDates ---
 
-    // TODO: Implement logic for 'week', 'month', 'year'
-    if (periodType === 'day') {
-        // Current Day
-        currentStart = new Date(now);
-        currentStart.setHours(0, 0, 0, 0);
-        currentEnd = new Date(now);
-        currentEnd.setHours(23, 59, 59, 999);
+    // Calculate Current Period
+    const { start: currentStart, end: currentEnd } = getPeriodDates(periodType, referenceDate);
 
-        // Previous Day
-        previousStart = new Date(currentStart);
-        previousStart.setDate(previousStart.getDate() - 1);
-        previousEnd = new Date(currentEnd);
-        previousEnd.setDate(previousEnd.getDate() - 1);
-    } else if (periodType === 'week') {
-        // Current Week (assuming week starts on Sunday)
-        currentStart = new Date(now);
-        currentStart.setDate(now.getDate() - now.getDay()); // Go back to Sunday
-        currentStart.setHours(0, 0, 0, 0);
-        currentEnd = new Date(currentStart);
-        currentEnd.setDate(currentStart.getDate() + 6); // Go forward to Saturday
-        currentEnd.setHours(23, 59, 59, 999);
-
-        // Previous Week
-        previousStart = new Date(currentStart);
-        previousStart.setDate(previousStart.getDate() - 7);
-        previousEnd = new Date(currentEnd);
-        previousEnd.setDate(previousEnd.getDate() - 7);
-    } else if (periodType === 'month') {
-        // Current Month
-        currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        currentStart.setHours(0, 0, 0, 0);
-        currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of current month
-        currentEnd.setHours(23, 59, 59, 999);
-
-        // Previous Month
-        previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        previousStart.setHours(0, 0, 0, 0);
-        previousEnd = new Date(now.getFullYear(), now.getMonth(), 0); // Last day of previous month
-        previousEnd.setHours(23, 59, 59, 999);
-    } else if (periodType === 'year') {
-        // Current Year
-        currentStart = new Date(now.getFullYear(), 0, 1); // January 1st
-        currentStart.setHours(0, 0, 0, 0);
-        currentEnd = new Date(now.getFullYear(), 11, 31); // December 31st
-        currentEnd.setHours(23, 59, 59, 999);
-
-        // Previous Year
-        previousStart = new Date(now.getFullYear() - 1, 0, 1);
-        previousStart.setHours(0, 0, 0, 0);
-        previousEnd = new Date(now.getFullYear() - 1, 11, 31);
-        previousEnd.setHours(23, 59, 59, 999);
-    } else {
-        // Should not happen with PeriodType, but handle defensively
-        throw new Error(`Unsupported period type: ${periodType}`);
+    // Calculate Previous Period Reference Date
+    let previousReferenceDate: Date;
+    switch (periodType) {
+        case 'day':
+            previousReferenceDate = new Date(currentStart);
+            previousReferenceDate.setDate(currentStart.getDate() - 1);
+            break;
+        case 'week':
+            previousReferenceDate = new Date(currentStart);
+            previousReferenceDate.setDate(currentStart.getDate() - 7);
+            break;
+        case 'month':
+            previousReferenceDate = new Date(currentStart);
+            previousReferenceDate.setMonth(currentStart.getMonth() - 1);
+            break;
+        case 'year':
+            previousReferenceDate = new Date(currentStart);
+            previousReferenceDate.setFullYear(currentStart.getFullYear() - 1);
+            break;
+        default:
+            // This should be exhaustive based on PeriodType definition
+            throw new Error(`Unsupported period type: ${periodType}`);
     }
+
+    // Calculate Previous Period
+    const { start: previousStart, end: previousEnd } = getPeriodDates(periodType, previousReferenceDate);
 
     // --- Fetch Data ---
     const fetchTotal = async (start: Date, end: Date): Promise<number> => {
@@ -116,18 +89,29 @@ async function getPeriodSummary(periodType: PeriodType): Promise<PeriodSummaryDt
  * Retrieves power consumption summaries for day, week, month, and year.
  * Compares current period totals with the previous period.
  *
+ * @param {Object} req.query.date - Optional reference date (ISO 8601 format)
  * @returns {PowerUsageSummaryResponseDto} Aggregated power usage summaries
  *
+ * @throws {400} Invalid date format
  * @throws {500} Database or server error
  */
-const getSummary: Handler<PowerUsageSummaryResponseDto> = async (req, res) => {
+const getSummary: Handler<PowerUsageSummaryResponseDto, { Querystring: PowerUsageSummaryQueryDto }> = async (req, res) => {
     try {
-        // Fetch summaries for all periods in parallel
+        const { date: dateStr } = req.query;
+        const referenceDate = dateStr ? new Date(dateStr) : new Date();
+
+        // Validate date
+        if (isNaN(referenceDate.getTime())) {
+            logger.warn(`Invalid date format received: ${dateStr}`);
+            return res.status(400).send({ error: 'Invalid date format. Please use ISO 8601 format.' });
+        }
+
+        // Fetch summaries for all periods in parallel, passing the reference date
         const [daySummary, weekSummary, monthSummary, yearSummary] = await Promise.all([
-            getPeriodSummary('day'),
-            getPeriodSummary('week'),
-            getPeriodSummary('month'),
-            getPeriodSummary('year'),
+            getPeriodSummary('day', referenceDate),
+            getPeriodSummary('week', referenceDate),
+            getPeriodSummary('month', referenceDate),
+            getPeriodSummary('year', referenceDate),
         ]);
 
         const response: PowerUsageSummaryResponseDto = {
