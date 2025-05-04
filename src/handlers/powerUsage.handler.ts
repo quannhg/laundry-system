@@ -53,7 +53,7 @@ const getPowerUsage: Handler<GetPowerUsageResultDto, { Querystring: GetPowerUsag
                 order: {
                     id: data.order.id,
                     status: data.order.status,
-                    washingMode: data.order.washingMode,
+                    washingMode: data.order.washingMode.name,
                     isSoak: data.order.isSoak,
                     washingAt: data.order.washingAt?.toISOString() ?? null,
                     finishedAt: data.order.finishedAt?.toISOString() ?? null,

@@ -163,7 +163,7 @@ const getAll: Handler<GetAllOrderResultDto> = async (req, res) => {
                 authCode: order.authCode,
                 price: order.price,
                 status: order.status,
-                washingMode: order.washingMode,
+                washingMode: order.washingMode.name,
                 isSoak: order.isSoak,
                 paymentMethod: order.paymentMethod,
                 createAt: order.createdAt.toISOString(),
@@ -354,7 +354,7 @@ const searchOrders: Handler<SearchOrdersResultDto, { Querystring: SearchOrdersIn
                 authCode: order.authCode,
                 price: order.price,
                 status: order.status,
-                washingMode: order.washingMode,
+                washingMode: order.washingMode.name,
                 isSoak: order.isSoak,
                 paymentMethod: order.paymentMethod,
                 createAt: order.createdAt.toISOString(),
@@ -436,7 +436,7 @@ const getById: Handler<GetOrderByIdResultDto, { Params: { id: string } }> = asyn
             cancelledAt: order.cancelledAt?.toISOString() ?? null,
             machineId: order.machine.id,
             machineNo: order.machine.machineNo,
-            washingMode: order.washingMode,
+            washingMode: order.washingMode.name,
         };
 
         res.send(responseOrder);

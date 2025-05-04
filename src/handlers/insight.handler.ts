@@ -41,6 +41,7 @@ export const getInsightsHandler = async (_request: FastifyRequest, reply: Fastif
     // Define the type for orders fetched with powerUsage included
     type OrderWithPowerUsage = Order & {
         powerUsage: PowerUsageData | null;
+        washingMode: WashingMode;
     };
 
     try {
@@ -49,7 +50,6 @@ export const getInsightsHandler = async (_request: FastifyRequest, reply: Fastif
         // 1. Fetch Data
         const now = new Date();
         const eightWeeksAgo = startOfWeek(subWeeks(now, 7), { weekStartsOn: 1 });
-
         // Fetch real data using Prisma client
         const machines: WashingMachine[] = await prisma.washingMachine.findMany();
         const orders: OrderWithPowerUsage[] = await prisma.order.findMany({
@@ -60,6 +60,7 @@ export const getInsightsHandler = async (_request: FastifyRequest, reply: Fastif
             },
             include: {
                 powerUsage: true, // Include related power usage data
+                washingMode: true, // Include washing mode data
             },
         });
 
@@ -95,6 +96,26 @@ export const getInsightsHandler = async (_request: FastifyRequest, reply: Fastif
                 }),
             ),
         };
+
+        // // Output latitudeInput to json file for testing
+        // try {
+        //     // Create test-data directory if it doesn't exist
+        //     const testDataDir = './test-data';
+        //     if (!fs.existsSync(testDataDir)) {
+        //         fs.mkdirSync(testDataDir, { recursive: true });
+        //     }
+
+        //     // Write data with timestamp for better tracking
+        //     const timestamp = new Date().toISOString().replace(/:/g, '-');
+        //     fs.writeFileSync(
+        //         `${testDataDir}/latitude-input-${timestamp}.json`,
+        //         JSON.stringify(latitudeInput, null, 2),
+        //     );
+        //     logger.info(`Test data written to ${testDataDir}/latitude-input-${timestamp}.json`);
+        // } catch (error) {
+        //     logger.error(`Failed to write test data: ${error}`);
+        //     // Continue with the process even if writing test data fails
+        // }
 
         // 3. Get Latitude Credentials
         const apiKey = envs.LATITUDE_API_KEY;
