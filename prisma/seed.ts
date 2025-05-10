@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 const SALT_ROUNDS = 10;
 const NUMBER_OF_USERS = 100;
 const NUMBER_OF_MACHINES = 50;
-const TOTAL_ORDERS_TO_SEED = 500;
+const TOTAL_ORDERS_TO_SEED = 2000;
 const MAX_PENDING_ORDERS_PER_USER = 3;
 const MAX_WASHING_ORDERS_PER_USER = 2;
 
@@ -174,21 +174,47 @@ function generateEmailFromName(name: string): string {
 
 // New functions for date range generation
 function getRandomDateInRange(): Date {
-    return new Date(START_DATE.getTime() + Math.random() * (TODAY.getTime() - START_DATE.getTime()));
+    // Generate a random date between START_DATE and TODAY
+    const randomDate = new Date(START_DATE.getTime() + Math.random() * (TODAY.getTime() - START_DATE.getTime()));
+
+    // Ensure the date doesn't exceed TODAY
+    if (randomDate > TODAY) {
+        return new Date(TODAY);
+    }
+
+    return randomDate;
 }
 
 function getRandomDateInMonth(year: number, month: number): Date {
     // month is 0-indexed (0 = January, 11 = December)
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const day = Math.floor(Math.random() * daysInMonth) + 1;
+
+    // If this is the current month and year, limit to today's date
+    let maxDay = daysInMonth;
+    if (year === TODAY.getFullYear() && month === TODAY.getMonth()) {
+        maxDay = TODAY.getDate();
+    }
+
+    const day = Math.floor(Math.random() * maxDay) + 1;
+
+    // For current month and year, also limit hours if it's today
+    let maxHour = 23;
+    let maxMinute = 59;
+    let maxSecond = 59;
+
+    if (year === TODAY.getFullYear() && month === TODAY.getMonth() && day === TODAY.getDate()) {
+        maxHour = TODAY.getHours();
+        maxMinute = TODAY.getMinutes();
+        maxSecond = TODAY.getSeconds();
+    }
 
     return new Date(
         year,
         month,
         day,
-        Math.floor(Math.random() * 24), // Random hour
-        Math.floor(Math.random() * 60), // Random minute
-        Math.floor(Math.random() * 60), // Random second
+        Math.floor(Math.random() * (maxHour + 1)), // Random hour
+        Math.floor(Math.random() * (maxMinute + 1)), // Random minute
+        Math.floor(Math.random() * (maxSecond + 1)), // Random second
     );
 }
 
@@ -448,8 +474,10 @@ async function generateOrders(userIds: string[], machineIds: string[], washingMo
 
         // For orders supposed to be "happening now"
         if (isRecentOrder && isRecentDate && (status === OrderStatus.PENDING || status === OrderStatus.WASHING)) {
-            // Set createdAt to a very recent date
-            createdAt = new Date(TODAY.getTime() - getRandomInt(0, 48) * 60 * 60 * 1000); // 0-48 hours ago
+            // Set createdAt to a very recent date, but not exceeding TODAY
+            const hoursAgo = getRandomInt(0, 48);
+            const recentTime = TODAY.getTime() - hoursAgo * 60 * 60 * 1000; // 0-48 hours ago
+            createdAt = new Date(recentTime);
         }
 
         let washingAt: Date | null = null;
@@ -459,6 +487,10 @@ async function generateOrders(userIds: string[], machineIds: string[], washingMo
         // Calculate timestamps based on status
         if (status === OrderStatus.WASHING || status === OrderStatus.FINISHED || status === OrderStatus.CONFIRMED) {
             washingAt = addMinutes(createdAt, getRandomInt(5, 15)); // Start washing 5-15 mins after creation
+            // Ensure washingAt doesn't exceed TODAY
+            if (washingAt > TODAY) {
+                washingAt = new Date(TODAY);
+            }
         }
         if (status === OrderStatus.FINISHED || status === OrderStatus.CONFIRMED) {
             if (washingAt) {
@@ -467,9 +499,17 @@ async function generateOrders(userIds: string[], machineIds: string[], washingMo
                 // Should have washingAt, but handle defensively
                 finishedAt = addMinutes(createdAt, getRandomInt(WASH_DURATION_MINUTES.min + 5, WASH_DURATION_MINUTES.max + 15));
             }
+            // Ensure finishedAt doesn't exceed TODAY
+            if (finishedAt && finishedAt > TODAY) {
+                finishedAt = new Date(TODAY);
+            }
         }
         if (status === OrderStatus.CANCELLED || status === OrderStatus.REFUNDED) {
             cancelledAt = addMinutes(createdAt, getRandomInt(1, 60)); // Cancelled/refunded within an hour
+            // Ensure cancelledAt doesn't exceed TODAY
+            if (cancelledAt > TODAY) {
+                cancelledAt = new Date(TODAY);
+            }
         }
 
         const order = {
@@ -534,11 +574,17 @@ async function generatePowerUsageData() {
         const kwhRange = KWH_RANGES[modeName] || KWH_RANGES[WASHING_MODE_NAMES.NORMAL];
         const totalKwh = getRandomFloat(kwhRange.min, kwhRange.max);
 
+        // Ensure recordedAt doesn't exceed TODAY
+        let recordedAt = order.finishedAt!;
+        if (recordedAt > TODAY) {
+            recordedAt = new Date(TODAY);
+        }
+
         return {
             orderId: order.id,
             machineId: order.machineId,
             totalKwh: totalKwh,
-            recordedAt: order.finishedAt!, // Use the order's finish time
+            recordedAt: recordedAt, // Use the order's finish time, capped at TODAY
         };
     });
 
