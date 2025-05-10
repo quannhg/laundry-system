@@ -16,10 +16,8 @@ const WASHING_MODE_NAMES = {
     THOROUGHLY: 'Giặt kỹ',
 };
 
-// Date range for data generation
-const TODAY = new Date();
-const START_DATE = new Date(TODAY);
-START_DATE.setMonth(TODAY.getMonth() - 18); // 1.5 years ago
+// Target year for data generation
+const TARGET_YEAR = 2025;
 
 const KWH_RANGES = {
     [WASHING_MODE_NAMES.NORMAL]: { min: 0.4, max: 0.9 },
@@ -172,12 +170,15 @@ function generateEmailFromName(name: string): string {
     return `${cleanedName}@example.com`;
 }
 
-// New functions for date range generation
-function getRandomDateInRange(): Date {
-    return new Date(START_DATE.getTime() + Math.random() * (TODAY.getTime() - START_DATE.getTime()));
+// New functions for target year date generation
+function getRandomDateInYear(year = TARGET_YEAR): Date {
+    const start = new Date(year, 0, 1); // January 1st of target year
+    const end = new Date(year, 11, 31, 23, 59, 59); // December 31st of target year
+
+    return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 }
 
-function getRandomDateInMonth(year: number, month: number): Date {
+function getRandomDateInMonth(year = TARGET_YEAR, month = 0): Date {
     // month is 0-indexed (0 = January, 11 = December)
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const day = Math.floor(Math.random() * daysInMonth) + 1;
@@ -192,30 +193,12 @@ function getRandomDateInMonth(year: number, month: number): Date {
     );
 }
 
-// Distribute dates evenly throughout the 1.5 year period
-function getDistributedDates(count: number): Date[] {
+// Distribute dates evenly throughout the year
+function getDistributedDates(count: number, year = TARGET_YEAR): Date[] {
     const dates: Date[] = [];
 
-    // Calculate the number of months in our range
-    const startYear = START_DATE.getFullYear();
-    const startMonth = START_DATE.getMonth();
-    const endYear = TODAY.getFullYear();
-    const endMonth = TODAY.getMonth();
-
-    // Create an array of all year/month combinations in our range
-    const yearMonthCombinations: { year: number; month: number }[] = [];
-
-    for (let year = startYear; year <= endYear; year++) {
-        const monthStart = year === startYear ? startMonth : 0;
-        const monthEnd = year === endYear ? endMonth : 11;
-
-        for (let month = monthStart; month <= monthEnd; month++) {
-            yearMonthCombinations.push({ year, month });
-        }
-    }
-
     // Ensure at least some orders in each month
-    for (const { year, month } of yearMonthCombinations) {
+    for (let month = 0; month < 12; month++) {
         // Add 5-15 orders per month as a baseline
         const ordersPerMonth = Math.floor(Math.random() * 10) + 5;
 
@@ -224,9 +207,9 @@ function getDistributedDates(count: number): Date[] {
         }
     }
 
-    // Fill the rest randomly throughout the range
+    // Fill the rest randomly throughout the year
     while (dates.length < count) {
-        dates.push(getRandomDateInRange());
+        dates.push(getRandomDateInYear(year));
     }
 
     // Sort chronologically
@@ -441,15 +424,16 @@ async function generateOrders(userIds: string[], machineIds: string[], washingMo
         let createdAt = distributedDates[i];
 
         // Special handling for PENDING and WASHING orders near the end of the dataset:
-        // If we're in the last 5% of orders and the date is close to today,
+        // If we're in the last 5% of orders and the date is close to the end of the year,
         // consider making some orders active (PENDING/WASHING) for testing current functionality
         const isRecentOrder = i > TOTAL_ORDERS_TO_SEED * 0.95;
-        const isRecentDate = TODAY.getTime() - createdAt.getTime() < 7 * 24 * 60 * 60 * 1000; // Within the last week
+        const isEndOfYear = createdAt.getMonth() >= 10; // November or December
 
         // For orders supposed to be "happening now"
-        if (isRecentOrder && isRecentDate && (status === OrderStatus.PENDING || status === OrderStatus.WASHING)) {
-            // Set createdAt to a very recent date
-            createdAt = new Date(TODAY.getTime() - getRandomInt(0, 48) * 60 * 60 * 1000); // 0-48 hours ago
+        if (isRecentOrder && isEndOfYear && (status === OrderStatus.PENDING || status === OrderStatus.WASHING)) {
+            // Set createdAt to a very recent date instead of 2025
+            const now = new Date();
+            createdAt = new Date(now.getTime() - getRandomInt(0, 48) * 60 * 60 * 1000); // 0-48 hours ago
         }
 
         let washingAt: Date | null = null;
