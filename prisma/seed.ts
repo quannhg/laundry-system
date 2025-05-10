@@ -173,32 +173,75 @@ function generateEmailFromName(name: string): string {
 // New functions for target year date generation
 function getRandomDateInYear(year = TARGET_YEAR): Date {
     const start = new Date(year, 0, 1); // January 1st of target year
-    const end = new Date(year, 11, 31, 23, 59, 59); // December 31st of target year
+
+    // Ensure end date doesn't exceed current date
+    const currentDate = new Date();
+    const defaultEnd = new Date(year, 11, 31, 23, 59, 59); // December 31st of target year
+
+    // Determine the end date based on the year
+    let end: Date;
+    if (year < currentDate.getFullYear()) {
+        end = defaultEnd; // Past year, use December 31st
+    } else if (year === currentDate.getFullYear()) {
+        end = currentDate; // Current year, use current date
+    } else {
+        end = defaultEnd; // Future year (shouldn't happen with our changes)
+    }
 
     return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 }
 
 function getRandomDateInMonth(year = TARGET_YEAR, month = 0): Date {
     // month is 0-indexed (0 = January, 11 = December)
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const day = Math.floor(Math.random() * daysInMonth) + 1;
+    const currentDate = new Date();
 
-    return new Date(
-        year,
-        month,
-        day,
-        Math.floor(Math.random() * 24), // Random hour
-        Math.floor(Math.random() * 60), // Random minute
-        Math.floor(Math.random() * 60), // Random second
-    );
+    // Check if we're generating a date for the current month and year
+    const isCurrentMonthAndYear = year === currentDate.getFullYear() && month === currentDate.getMonth();
+
+    // Determine the maximum day based on whether it's the current month
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const maxDay = isCurrentMonthAndYear ? currentDate.getDate() : daysInMonth;
+
+    const day = Math.floor(Math.random() * maxDay) + 1;
+
+    // For current month and year, also limit hours, minutes, and seconds
+    let hours: number, minutes: number, seconds: number;
+    if (isCurrentMonthAndYear && day === currentDate.getDate()) {
+        hours = Math.floor(Math.random() * (currentDate.getHours() + 1));
+        minutes =
+            hours === currentDate.getHours() ? Math.floor(Math.random() * (currentDate.getMinutes() + 1)) : Math.floor(Math.random() * 60);
+        seconds =
+            hours === currentDate.getHours() && minutes === currentDate.getMinutes()
+                ? Math.floor(Math.random() * (currentDate.getSeconds() + 1))
+                : Math.floor(Math.random() * 60);
+    } else {
+        hours = Math.floor(Math.random() * 24);
+        minutes = Math.floor(Math.random() * 60);
+        seconds = Math.floor(Math.random() * 60);
+    }
+
+    return new Date(year, month, day, hours, minutes, seconds);
 }
 
 // Distribute dates evenly throughout the year
 function getDistributedDates(count: number, year = TARGET_YEAR): Date[] {
     const dates: Date[] = [];
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
 
-    // Ensure at least some orders in each month
-    for (let month = 0; month < 12; month++) {
+    // Determine the maximum month we can use based on current date
+    let maxMonth: number;
+    if (year < currentYear) {
+        maxMonth = 11; // Past year, use all months
+    } else if (year === currentYear) {
+        maxMonth = currentMonth; // Current year, use up to current month
+    } else {
+        maxMonth = 11; // Future year (shouldn't happen with our changes)
+    }
+
+    // Ensure at least some orders in each available month
+    for (let month = 0; month <= maxMonth; month++) {
         // Add 5-15 orders per month as a baseline
         const ordersPerMonth = Math.floor(Math.random() * 10) + 5;
 
@@ -207,7 +250,7 @@ function getDistributedDates(count: number, year = TARGET_YEAR): Date[] {
         }
     }
 
-    // Fill the rest randomly throughout the year
+    // Fill the rest randomly throughout the available time period
     while (dates.length < count) {
         dates.push(getRandomDateInYear(year));
     }
@@ -300,7 +343,7 @@ async function generateUsers() {
         password: hashSync(ADMIN_PASSWORD, SALT_ROUNDS),
         email: ADMIN_EMAIL,
         avatarUrl: `https://ui-avatars.com/api/?name=Admin+User`,
-        phoneNumber: faker.phone.number('0#########'), // Use faker for phone
+        phoneNumber: '0' + faker.string.numeric(9), // Generate a 10-digit phone number starting with 0
         enableNotification: true, // Added missing property
     });
 
@@ -323,7 +366,7 @@ async function generateUsers() {
             password: hashSync(DEFAULT_PASSWORD, SALT_ROUNDS),
             email: email,
             avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
-            phoneNumber: faker.phone.number('0#########'),
+            phoneNumber: '0' + faker.string.numeric(9),
             enableNotification: true, // Added missing property
         });
     }
@@ -346,7 +389,7 @@ async function generateUsers() {
             password: hashSync(DEFAULT_PASSWORD, SALT_ROUNDS),
             email: email,
             avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
-            phoneNumber: faker.phone.number('0#########'),
+            phoneNumber: '0' + faker.string.numeric(9),
             enableNotification: true, // Added missing property
         });
     }
@@ -417,11 +460,18 @@ async function generateOrders(userIds: string[], machineIds: string[], washingMo
 
         const status = getRandomElement(availableStatuses);
         const washingModeId = getRandomElement(washingModeIds);
-        const selectedWashingMode = washingModes.find((mode) => mode.id === washingModeId)!;
+        const selectedWashingMode = washingModes.find((mode) => mode.id === washingModeId) || washingModes[0];
         const price = selectedWashingMode.price;
 
         // Use the distributed date as the creation date
         let createdAt = distributedDates[i];
+
+        // Ensure no order date exceeds current date
+        const now = new Date();
+        if (createdAt > now) {
+            // If the distributed date is in the future, use a random date up to now
+            createdAt = new Date(now.getTime() - getRandomInt(0, 30 * 24) * 60 * 60 * 1000); // Random date within last 30 days
+        }
 
         // Special handling for PENDING and WASHING orders near the end of the dataset:
         // If we're in the last 5% of orders and the date is close to the end of the year,
@@ -432,7 +482,6 @@ async function generateOrders(userIds: string[], machineIds: string[], washingMo
         // For orders supposed to be "happening now"
         if (isRecentOrder && isEndOfYear && (status === OrderStatus.PENDING || status === OrderStatus.WASHING)) {
             // Set createdAt to a very recent date instead of 2025
-            const now = new Date();
             createdAt = new Date(now.getTime() - getRandomInt(0, 48) * 60 * 60 * 1000); // 0-48 hours ago
         }
 
@@ -441,9 +490,16 @@ async function generateOrders(userIds: string[], machineIds: string[], washingMo
         let cancelledAt: Date | null = null;
 
         // Calculate timestamps based on status
+        // Using the same 'now' variable from above
+
         if (status === OrderStatus.WASHING || status === OrderStatus.FINISHED || status === OrderStatus.CONFIRMED) {
             washingAt = addMinutes(createdAt, getRandomInt(5, 15)); // Start washing 5-15 mins after creation
+            // Ensure washingAt doesn't exceed current date
+            if (washingAt > now) {
+                washingAt = new Date(now.getTime() - getRandomInt(5, 30) * 60 * 1000); // 5-30 minutes ago
+            }
         }
+
         if (status === OrderStatus.FINISHED || status === OrderStatus.CONFIRMED) {
             if (washingAt) {
                 finishedAt = addMinutes(washingAt, getRandomInt(WASH_DURATION_MINUTES.min, WASH_DURATION_MINUTES.max));
@@ -451,9 +507,27 @@ async function generateOrders(userIds: string[], machineIds: string[], washingMo
                 // Should have washingAt, but handle defensively
                 finishedAt = addMinutes(createdAt, getRandomInt(WASH_DURATION_MINUTES.min + 5, WASH_DURATION_MINUTES.max + 15));
             }
+
+            // Ensure finishedAt doesn't exceed current date
+            if (finishedAt && finishedAt > now) {
+                finishedAt = new Date(now.getTime() - getRandomInt(1, 10) * 60 * 1000); // 1-10 minutes ago
+
+                // Also adjust washingAt to be before finishedAt if needed
+                if (washingAt && washingAt > finishedAt) {
+                    washingAt = new Date(
+                        finishedAt.getTime() - getRandomInt(WASH_DURATION_MINUTES.min, WASH_DURATION_MINUTES.max) * 60 * 1000,
+                    );
+                }
+            }
         }
+
         if (status === OrderStatus.CANCELLED || status === OrderStatus.REFUNDED) {
             cancelledAt = addMinutes(createdAt, getRandomInt(1, 60)); // Cancelled/refunded within an hour
+
+            // Ensure cancelledAt doesn't exceed current date
+            if (cancelledAt > now) {
+                cancelledAt = new Date(now.getTime() - getRandomInt(1, 30) * 60 * 1000); // 1-30 minutes ago
+            }
         }
 
         const order = {
@@ -522,7 +596,7 @@ async function generatePowerUsageData() {
             orderId: order.id,
             machineId: order.machineId,
             totalKwh: totalKwh,
-            recordedAt: order.finishedAt!, // Use the order's finish time
+            recordedAt: order.finishedAt || new Date(), // Use the order's finish time or current date as fallback
         };
     });
 
