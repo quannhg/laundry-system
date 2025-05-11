@@ -299,14 +299,15 @@ async function sendCancelNotification(userId: string) {
 export async function updatePowerConsumption(client: MqttClient, data: MqttMessagePayload): Promise<void> {
     const consumptionData = data as { id: string; consumption: number };
     try {
-        // Find the latest finished order for this machine
+        // Find the latest finished order for this machine that doesn't have power usage data yet
         const order = await prisma.order.findFirst({
             where: {
                 machineId: consumptionData.id,
-                status: OrderStatus.FINISHED,
+                status: { in: [OrderStatus.FINISHED, OrderStatus.CONFIRMED] },
                 finishedAt: {
                     not: null,
                 },
+                powerUsage: null, // Only find orders that don't have power usage data yet
             },
             orderBy: {
                 finishedAt: 'desc',
@@ -314,7 +315,7 @@ export async function updatePowerConsumption(client: MqttClient, data: MqttMessa
         });
 
         if (!order) {
-            throw new Error(`No finished order found for machine ${consumptionData.id}`);
+            throw new Error(`No finished order without power usage data found for machine ${consumptionData.id}`);
         }
 
         // Store power usage data
